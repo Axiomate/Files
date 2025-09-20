@@ -1,0 +1,1235 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.heartbeat.mapper.db1.MaternalDeathMapper">
+
+<!-- ===================================================== -->
+<!-- =============== event_details (PARENT) ============== -->
+<!-- ===================================================== -->
+
+<select id="getEventDetailsFromIpId"  parameterType="int" resultType="int">
+	select event_details_id as eventDetailsId from maternal_death_event_details where ip_id = #{id} or rehab_bill_id =#{id} order by event_details_id desc limit 1
+</select>
+
+<select id="selectEventDetails" parameterType="int" resultMap="EventDetailsResultMap">
+  SELECT coalesce(event_details_id,0) as event_details_id,coalesce(hcf_event_id,concat(facility_id,'-',count(event_details_id)+1)) as hcf_event_id,domain,event_occurrence_date,
+  event_occurrence_time,event_submitted_date,event_submitted_time,
+  event_updated_date,event_closed_date,event_record_status,
+  case_summary,national_mpdsr_committee_recommendation,pv.ip_id,rehab_bill_id from patient_visits pv
+		left join mst_branches mb on mb.office_Id = pv.office_id
+		left join maternal_death_event_details md on md.ip_id = pv.ip_id
+		where pv.ip_id= #{eventDetailsId} group by mb.office_id order by pv.consult_id desc limit 1 
+</select>
+
+<insert id="insertEventDetails" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$EventDetails" useGeneratedKeys="true" keyProperty="eventDetailsId">
+  INSERT INTO maternal_death_event_details (
+    hcf_event_id, domain, event_occurrence_date, event_occurrence_time,
+    event_submitted_date, event_submitted_time, event_updated_date, event_closed_date,
+    event_record_status, case_summary, national_mpdsr_committee_recommendation
+  ) VALUES (
+    #{HCFEventID.value}, "Maternal", str_to_date(#{EventOccurrenceDate.value},'%d-%m-%Y'), str_to_date(#{EventOccurrenceTime.value}, '%h:%i %p'),
+    str_to_date(#{EventSubmittedDate.value},'%d-%m-%Y'), str_to_date(#{EventSubmittedTime.value}, '%h:%i %p'), str_to_date(#{EventUpdatedDate.value},'%d-%m-%Y'), str_to_date(#{EventClosedDate.value},'%d-%m-%Y'),
+    #{EventRecordStatus.value}, #{CaseSummary.value}, #{NationalMpdsrCommitteeRecommendation.value}
+  )
+</insert>
+
+<update id="updateEventDetailsById" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$EventDetails">
+  UPDATE maternal_death_event_details SET
+    hcf_event_id = #{HCFEventID.value},
+    event_occurrence_date = str_to_date(#{EventOccurrenceDate.value},'%d-%m-%Y'),
+    event_occurrence_time = str_to_date(#{EventOccurrenceTime.value}, '%h:%i %p'),
+    event_submitted_date = str_to_date(#{EventSubmittedDate.value},'%d-%m-%Y'),
+    event_submitted_time = str_to_date(#{EventSubmittedTime.value}, '%h:%i %p'),
+    event_updated_date = str_to_date(#{EventUpdatedDate.value},'%d-%m-%Y'),
+    event_closed_date = str_to_date(#{EventClosedDate.value},'%d-%m-%Y'),
+    event_record_status = #{EventRecordStatus.value},
+    case_summary = #{CaseSummary.value},
+    national_mpdsr_committee_recommendation = #{NationalMpdsrCommitteeRecommendation.value}
+  WHERE event_details_id = #{eventDetailsId}
+</update>
+
+<resultMap id="EventDetailsResultMap" type="com.heartbeat.maternaldeath.MaternalDeathXmlModel$EventDetails">
+  <result property="HCFEventID.value" column="hcf_event_id"/>
+  <result property="Domain.value" column="domain"/>
+  <result property="EventOccurrenceDate.value" column="event_occurrence_date"/>
+  <result property="EventOccurrenceTime.value" column="event_occurrence_time"/>
+  <result property="EventSubmittedDate.value" column="event_submitted_date"/>
+  <result property="EventSubmittedTime.value" column="event_submitted_time"/>
+  <result property="EventUpdatedDate.value" column="event_updated_date"/>
+  <result property="EventClosedDate.value" column="event_closed_date"/>
+  <result property="EventRecordStatus.value" column="event_record_status"/>
+  <result property="CaseSummary.value" column="case_summary"/>
+  <result property="NationalMpdsrCommitteeRecommendation.value" column="national_mpdsr_committee_recommendation"/>
+  <result property="eventDetailsId" column="event_details_id"/>
+  <result property="ipId" column="ip_id"/>
+  <result property="rehabBillId" column="rehab_bill_id"/>
+</resultMap>
+
+<!-- ===================================================== -->
+<!-- =============== event_location ====================== -->
+<!-- ===================================================== -->
+<select id="selectEventLocation" parameterType="int" resultMap="EventLocationResultMap">
+  SELECT md.event_details_id,coalesce(facility_name,off_displayname) as facility_name,
+   facility_id as facility_mfid, facility_type
+   FROM patient_visits pv
+		left join mst_branches mb on mb.office_Id = pv.office_id
+		left join maternal_death_event_details mded on mded.ip_id = pv.ip_id
+		left join maternal_death_event_location md on md.event_details_id = mded.event_details_id
+		where pv.ip_id= #{eventDetailsId} group by mb.office_id order by pv.consult_id desc limit 1 
+</select>
+
+<insert id="insertEventLocation" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$EventLocation">
+  INSERT INTO maternal_death_event_location (event_details_id, facility_name, facility_mfid, facility_type)
+  VALUES (#{eventDetailsId}, #{FacilityName.value}, #{FacilityMFID.value}, #{FacilityType.value})
+</insert>
+
+<update id="updateEventLocation" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$EventLocation">
+  UPDATE maternal_death_event_location SET
+    facility_name = #{FacilityName.value},
+    facility_mfid = #{FacilityMFID.value},
+    facility_type = #{FacilityType.value}
+  WHERE event_details_id = #{eventDetailsId}
+</update>
+
+<resultMap id="EventLocationResultMap" type="com.heartbeat.maternaldeath.MaternalDeathXmlModel$EventLocation">
+  <result property="FacilityName.value" column="facility_name"/>
+  <result property="FacilityMFID.value" column="facility_mfid"/>
+  <result property="FacilityType.value" column="facility_type"/>
+  <result property="eventDetailsId" column="event_details_id"/>
+</resultMap>
+
+<!-- ===================================================== -->
+<!-- =============== identification ====================== -->
+<!-- ===================================================== -->
+<select id="selectIdentification" parameterType="int" resultMap="IdentificationResultMap">
+  SELECT * FROM maternal_death_identification WHERE event_details_id = #{eventDetailsId}
+</select>
+
+<insert id="insertIdentification" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$IDENTIFICATION">
+  INSERT INTO maternal_death_identification (
+    event_details_id, deceased_mrn_cmrn, deceased_firstname, deceased_secondname, deceased_lastname,
+    deceased_nationality, deceased_emirates_id_passport, deceased_uae_residence_status,
+    address_if_resident_and_citizen, length_of_stay_if_visitor, payment_method, other_payment_methods,
+    death_notification_number, deceased_age_years, deceased_education, deceased_occupation,
+    deceased_employed_specify, deceased_marital_status, other_marital_status,
+    husbands_occupation, husband_employed_specify, type_of_care_available
+  ) VALUES (
+    #{eventDetailsId}, #{DeceasedMRNCMRN.value}, #{Deceasedfirstname.value}, #{Deceasedsecondname.value}, #{Deceasedlastname.value},
+    #{Deceasednationality.value}, #{DeceasedEmiratesIDpassportnumber.value}, #{DeceasedUAEresidencystatus.value},
+    #{AddressIfResidentandCitizen.value}, #{LengthofstayIfvisitor.value}, #{Paymentmethod.value}, #{OtherPaymentMethods.value},
+    #{DeathNotificationNumber.value}, #{DeceasedageYears.value}, #{Deceasededucation.value}, #{Deceasedoccupation.value},
+    #{DeceasedEmployedSpecify.value}, #{DeceasedMaritalstatus.value}, #{OtherMaritalStatus.value},
+    #{HusbandsOccupation.value}, #{HusbandEmployedSpecify.value}, #{Typeofcareavailable.value}
+  )
+</insert>
+
+<update id="updateIdentification" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$IDENTIFICATION">
+  UPDATE maternal_death_identification SET
+    deceased_mrn_cmrn = #{DeceasedMRNCMRN.value},
+    deceased_firstname = #{Deceasedfirstname.value},
+    deceased_secondname = #{Deceasedsecondname.value},
+    deceased_lastname = #{Deceasedlastname.value},
+    deceased_nationality = #{Deceasednationality.value},
+    deceased_emirates_id_passport = #{DeceasedEmiratesIDpassportnumber.value},
+    deceased_uae_residence_status = #{DeceasedUAEresidencystatus.value},
+    address_if_resident_and_citizen = #{AddressIfResidentandCitizen.value},
+    length_of_stay_if_visitor = #{LengthofstayIfvisitor.value},
+    payment_method = #{Paymentmethod.value},
+    other_payment_methods = #{OtherPaymentMethods.value},
+    death_notification_number = #{DeathNotificationNumber.value},
+    deceased_age_years = #{DeceasedageYears.value},
+    deceased_education = #{Deceasededucation.value},
+    deceased_occupation = #{Deceasedoccupation.value},
+    deceased_employed_specify = #{DeceasedEmployedSpecify.value},
+    deceased_marital_status = #{DeceasedMaritalstatus.value},
+    other_marital_status = #{OtherMaritalStatus.value},
+    husbands_occupation = #{HusbandsOccupation.value},
+    husband_employed_specify = #{HusbandEmployedSpecify.value},
+    type_of_care_available = #{Typeofcareavailable.value}
+  WHERE event_details_id = #{eventDetailsId}
+</update>
+
+<resultMap id="IdentificationResultMap" type="com.heartbeat.maternaldeath.MaternalDeathXmlModel$IDENTIFICATION">
+  <result property="DeceasedMRNCMRN.value" column="deceased_mrn_cmrn"/>
+  <result property="Deceasedfirstname.value" column="deceased_firstname"/>
+  <result property="Deceasedsecondname.value" column="deceased_secondname"/>
+  <result property="Deceasedlastname.value" column="deceased_lastname"/>
+  <result property="Deceasednationality.value" column="deceased_nationality"/>
+  <result property="DeceasedEmiratesIDpassportnumber.value" column="deceased_emirates_id_passport"/>
+  <result property="DeceasedUAEresidencystatus.value" column="deceased_uae_residence_status"/>
+  <result property="AddressIfResidentandCitizen.value" column="address_if_resident_and_citizen"/>
+  <result property="LengthofstayIfvisitor.value" column="length_of_stay_if_visitor"/>
+  <result property="Paymentmethod.value" column="payment_method"/>
+  <result property="OtherPaymentMethods.value" column="other_payment_methods"/>
+  <result property="DeathNotificationNumber.value" column="death_notification_number"/>
+  <result property="DeceasedageYears.value" column="deceased_age_years"/>
+  <result property="Deceasededucation.value" column="deceased_education"/>
+  <result property="Deceasedoccupation.value" column="deceased_occupation"/>
+  <result property="DeceasedEmployedSpecify.value" column="deceased_employed_specify"/>
+  <result property="DeceasedMaritalstatus.value" column="deceased_marital_status"/>
+  <result property="OtherMaritalStatus.value" column="other_marital_status"/>
+  <result property="HusbandsOccupation.value" column="husbands_occupation"/>
+  <result property="HusbandEmployedSpecify.value" column="husband_employed_specify"/>
+  <result property="Typeofcareavailable.value" column="type_of_care_available"/>
+  <result property="eventDetailsId" column="event_details_id"/>
+</resultMap>
+
+<!-- ===================================================== -->
+<!-- =============== obstetric_history =================== -->
+<!-- ===================================================== -->
+<select id="selectObstetricHistory" parameterType="int" resultMap="ObstetricHistoryResultMap">
+  SELECT * FROM maternal_death_obstetric_history WHERE event_details_id = #{eventDetailsId}
+</select>
+
+<insert id="insertObstetricHistory" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$ObstetricHistory">
+  INSERT INTO maternal_death_obstetric_history (
+    event_details_id, gravidity, parity, livebirths, stillbirths, neonatal_deaths,
+    induced_abortion, spontaneous_abortion, previous_caesarean, date_of_recent_cs,
+    previous_pregnancy_complications, previous_pregnancy_date, previous_pregnancy_number,
+    previous_pregnancy_description, contraception_prior_current_pregnancy, type_of_pregnancy,
+    booking_visit_at, anc_number_of_visits, date_of_last_anc_visit,
+    anc_services_provided_at, anc_provided_by
+  ) VALUES (
+    #{eventDetailsId}, #{Gravidity.value}, #{Parity.value}, #{Livebirths.value}, #{Stillbirths.value}, #{NeonatalDeaths.value},
+    #{InducedAbortion.value}, #{SpontaneousAbortion.value}, #{Previouscaesarean.value}, str_to_date(#{DateofrecentCS.value},'%d-%m-%Y'),
+    #{Previouspregnancycomplications.value},  str_to_date(#{PreviouspregnancyDate.value},'%d-%m-%Y'), #{PreviouspregnancyNumber.value},
+    #{PreviouspregnancyDescription.value}, #{ContraceptionUseJustPriorToCurrentPregnancy.value}, #{Typeofpregnancy.value},
+    #{Bookingvisitat.value}, #{AntenatalCareNumberOfVisits.value}, str_to_date(#{DateoflastANCvisit.value},'%d-%m-%Y'),
+    #{ANCservicesprovidedat.value}, #{ANCprovidedby.value}
+  )
+</insert>
+
+<update id="updateObstetricHistory" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$ObstetricHistory">
+  UPDATE maternal_death_obstetric_history SET
+    gravidity = #{Gravidity.value},
+    parity = #{Parity.value},
+    livebirths = #{Livebirths.value},
+    stillbirths = #{Stillbirths.value},
+    neonatal_deaths = #{NeonatalDeaths.value},
+    induced_abortion = #{InducedAbortion.value},
+    spontaneous_abortion = #{SpontaneousAbortion.value},
+    previous_caesarean = #{Previouscaesarean.value},
+    date_of_recent_cs = str_to_date(#{DateofrecentCS.value},'%d-%m-%Y'),
+    previous_pregnancy_complications = #{Previouspregnancycomplications.value},
+    previous_pregnancy_date = str_to_date(#{PreviouspregnancyDate.value},
+    previous_pregnancy_number = #{PreviouspregnancyNumber.value},
+    previous_pregnancy_description = #{PreviouspregnancyDescription.value},
+    contraception_prior_current_pregnancy = #{ContraceptionUseJustPriorToCurrentPregnancy.value},
+    type_of_pregnancy = #{Typeofpregnancy.value},
+    booking_visit_at = #{Bookingvisitat.value},
+    anc_number_of_visits = #{AntenatalCareNumberOfVisits.value},
+    date_of_last_anc_visit = str_to_date(#{DateoflastANCvisit.value},'%d-%m-%Y'),
+    anc_services_provided_at = #{ANCservicesprovidedat.value},
+    anc_provided_by = #{ANCprovidedby.value}
+  WHERE event_details_id = #{eventDetailsId}
+</update>
+
+<resultMap id="ObstetricHistoryResultMap" type="com.heartbeat.maternaldeath.MaternalDeathXmlModel$ObstetricHistory">
+  <result property="Gravidity.value" column="gravidity"/>
+  <result property="Parity.value" column="parity"/>
+  <result property="Livebirths.value" column="livebirths"/>
+  <result property="Stillbirths.value" column="stillbirths"/>
+  <result property="NeonatalDeaths.value" column="neonatal_deaths"/>
+  <result property="InducedAbortion.value" column="induced_abortion"/>
+  <result property="SpontaneousAbortion.value" column="spontaneous_abortion"/>
+  <result property="Previouscaesarean.value" column="previous_caesarean"/>
+  <result property="DateofrecentCS.value" column="date_of_recent_cs"/>
+  <result property="Previouspregnancycomplications.value" column="previous_pregnancy_complications"/>
+  <result property="PreviouspregnancyDate.value" column="previous_pregnancy_date"/>
+  <result property="PreviouspregnancyNumber.value" column="previous_pregnancy_number"/>
+  <result property="PreviouspregnancyDescription.value" column="previous_pregnancy_description"/>
+  <result property="ContraceptionUseJustPriorToCurrentPregnancy.value" column="contraception_prior_current_pregnancy"/>
+  <result property="Typeofpregnancy.value" column="type_of_pregnancy"/>
+  <result property="Bookingvisitat.value" column="booking_visit_at"/>
+  <result property="AntenatalCareNumberOfVisits.value" column="anc_number_of_visits"/>
+  <result property="DateoflastANCvisit.value" column="date_of_last_anc_visit"/>
+  <result property="ANCservicesprovidedat.value" column="anc_services_provided_at"/>
+  <result property="ANCprovidedby.value" column="anc_provided_by"/>
+  <result property="eventDetailsId" column="event_details_id"/>
+</resultMap>
+
+<!-- ===================================================== -->
+<!-- ========== preexisting_medical_conditions =========== -->
+<!-- ===================================================== -->
+<select id="selectPreExistingMedicalConditions" parameterType="int" resultMap="PEMCResultMap">
+  SELECT * FROM maternal_death_pre_existing_medical_conditions WHERE event_details_id = #{eventDetailsId}
+</select>
+
+<insert id="insertPreExistingMedicalConditions" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$PreExistingMedicalConditions">
+  INSERT INTO maternal_death_pre_existing_medical_conditions (
+    event_details_id, hypertension, diabetes, diabetes_other, anemia, hepatitis, heart_problem,
+    mental_disorder, infectious_diseases, other_diseases, other_specify
+  ) VALUES (
+    #{eventDetailsId}, #{Hypertension.value}, #{Diabetes.value}, #{DiabetesOther.value}, #{Anemia.value}, #{Hepatitis.value}, #{Heartproblem.value},
+    #{Mentaldisorder.value}, #{InfectiousDiseases.value}, #{Otherdiseases.value}, #{OtherSpecifyPreExistingMedicalConditions.value}
+  )
+</insert>
+
+<update id="updatePreExistingMedicalConditions" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$PreExistingMedicalConditions">
+  UPDATE maternal_death_pre_existing_medical_conditions SET
+    hypertension = #{Hypertension.value},
+    diabetes = #{Diabetes.value},
+    diabetes_other = #{DiabetesOther.value},
+    anemia = #{Anemia.value},
+    hepatitis = #{Hepatitis.value},
+    heart_problem = #{Heartproblem.value},
+    mental_disorder = #{Mentaldisorder.value},
+    infectious_diseases = #{InfectiousDiseases.value},
+    other_diseases = #{Otherdiseases.value},
+    other_specify = #{OtherSpecifyPreExistingMedicalConditions.value}
+  WHERE event_details_id = #{eventDetailsId}
+</update>
+
+<resultMap id="PEMCResultMap" type="com.heartbeat.maternaldeath.MaternalDeathXmlModel$PreExistingMedicalConditions">
+  <result property="Hypertension.value" column="hypertension"/>
+  <result property="Diabetes.value" column="diabetes"/>
+  <result property="DiabetesOther.value" column="diabetes_other"/>
+  <result property="Anemia.value" column="anemia"/>
+  <result property="Hepatitis.value" column="hepatitis"/>
+  <result property="Heartproblem.value" column="heart_problem"/>
+  <result property="Mentaldisorder.value" column="mental_disorder"/>
+  <result property="InfectiousDiseases.value" column="infectious_diseases"/>
+  <result property="Otherdiseases.value" column="other_diseases"/>
+  <result property="OtherSpecifyPreExistingMedicalConditions.value" column="other_specify"/>
+  <result property="eventDetailsId" column="event_details_id"/>
+</resultMap>
+
+<!-- ===================================================== -->
+<!-- ============= antenatal_risk_factors ================ -->
+<!-- ===================================================== -->
+<select id="selectAntenatalRiskFactors" parameterType="int" resultMap="ARFResultMap">
+  SELECT * FROM maternal_death_antenatal_risk_factors WHERE event_details_id = #{eventDetailsId}
+</select>
+
+<insert id="insertAntenatalRiskFactors" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$AntenatalRiskFactors">
+  INSERT INTO maternal_death_antenatal_risk_factors (
+    event_details_id, hypertension, proteinuria, glycosuria, anemia, urinary_tract_infection,
+    placenta_praevia, placenta_accreta, other_specify, antenatal_hospitalization,
+    describe_antenatal_hosp, antenatal_immunization, describe_antenatal_immunization,
+    antenatal_medications, list_medications, antenatal_supplement, list_supplement
+  ) VALUES (
+    #{eventDetailsId}, #{Hypertension.value}, #{Proteinuria.value}, #{Glycosuria.value}, #{Anemia.value}, #{UrinaryTractInfection.value},
+    #{PlacentaPraevia.value}, #{PlacentaAccreta.value}, #{OtherSpecifyAntenatalRiskFactors.value}, #{AntenatalHospitalization.value},
+    #{DescribeAntenatalhospitalization.value}, #{AntenatalImmunization.value}, #{DescribeAntenatalimmunization.value},
+    #{AntenatalMedications.value}, #{ListtheMedications.value}, #{AntenatalSupplement.value}, #{ListSupplement.value}
+  )
+</insert>
+
+<update id="updateAntenatalRiskFactors" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$AntenatalRiskFactors">
+  UPDATE maternal_death_antenatal_risk_factors SET
+    hypertension = #{Hypertension.value},
+    proteinuria = #{Proteinuria.value},
+    glycosuria = #{Glycosuria.value},
+    anemia = #{Anemia.value},
+    urinary_tract_infection = #{UrinaryTractInfection.value},
+    placenta_praevia = #{PlacentaPraevia.value},
+    placenta_accreta = #{PlacentaAccreta.value},
+    other_specify = #{OtherSpecifyAntenatalRiskFactors.value},
+    antenatal_hospitalization = #{AntenatalHospitalization.value},
+    describe_antenatal_hosp = #{DescribeAntenatalhospitalization.value},
+    antenatal_immunization = #{AntenatalImmunization.value},
+    describe_antenatal_immunization = #{DescribeAntenatalimmunization.value},
+    antenatal_medications = #{AntenatalMedications.value},
+    list_medications = #{ListtheMedications.value},
+    antenatal_supplement = #{AntenatalSupplement.value},
+    list_supplement = #{ListSupplement.value}
+  WHERE event_details_id = #{eventDetailsId}
+</update>
+
+<resultMap id="ARFResultMap" type="com.heartbeat.maternaldeath.MaternalDeathXmlModel$AntenatalRiskFactors">
+  <result property="Hypertension.value" column="hypertension"/>
+  <result property="Proteinuria.value" column="proteinuria"/>
+  <result property="Glycosuria.value" column="glycosuria"/>
+  <result property="Anemia.value" column="anemia"/>
+  <result property="UrinaryTractInfection.value" column="urinary_tract_infection"/>
+  <result property="PlacentaPraevia.value" column="placenta_praevia"/>
+  <result property="PlacentaAccreta.value" column="placenta_accreta"/>
+  <result property="OtherSpecifyAntenatalRiskFactors.value" column="other_specify"/>
+  <result property="AntenatalHospitalization.value" column="antenatal_hospitalization"/>
+  <result property="DescribeAntenatalhospitalization.value" column="describe_antenatal_hosp"/>
+  <result property="AntenatalImmunization.value" column="antenatal_immunization"/>
+  <result property="DescribeAntenatalimmunization.value" column="describe_antenatal_immunization"/>
+  <result property="AntenatalMedications.value" column="antenatal_medications"/>
+  <result property="ListtheMedications.value" column="list_medications"/>
+  <result property="AntenatalSupplement.value" column="antenatal_supplement"/>
+  <result property="ListSupplement.value" column="list_supplement"/>
+  <result property="eventDetailsId" column="event_details_id"/>
+</resultMap>
+
+<!-- ===================================================== -->
+<!-- ================= laboratory_test =================== -->
+<!-- ===================================================== -->
+<select id="selectLaboratoryTest" parameterType="int" resultMap="LabTestResultMap">
+  SELECT * FROM maternal_death_laboratory_test WHERE event_details_id = #{eventDetailsId}
+</select>
+
+<insert id="insertLaboratoryTest" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$LaboratoryTest">
+  INSERT INTO maternal_death_laboratory_test (
+    event_details_id, blood_type_rh, blood_type_rh_specify, hematocrit_hemoglobin,
+    hematocrit_hemoglobin_spec, vdrl, vdrl_specify, rubella, rubella_specify,
+    urinalysis, urinalysis_specify, hiv, hiv_specify, hbsag, hbsag_specify,
+    fgtt_hba1c, fgtt_hba1c_specify
+  ) VALUES (
+    #{eventDetailsId}, #{BloodTypeAndRH.value}, #{BloodTypeAndRHSpecify.value}, #{HematocritHemoglobin.value},
+    #{HematocritHemoglobinSpecify.value}, #{VDRL.value}, #{VDRLSpecify.value}, #{Rubella.value}, #{RubellaSpecify.value},
+    #{Urinalysis.value}, #{UrinalysisSpecify.value}, #{HIV.value}, #{HIVSpecify.value}, #{HBsAg.value}, #{HBsAgSpecify.value},
+    #{FGTTHemoglobinA1c.value}, #{FGTTHemoglobinA1cSpecify.value}
+  )
+</insert>
+
+<update id="updateLaboratoryTest" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$LaboratoryTest">
+  UPDATE maternal_death_laboratory_test SET
+    blood_type_rh = #{BloodTypeAndRH.value},
+    blood_type_rh_specify = #{BloodTypeAndRHSpecify.value},
+    hematocrit_hemoglobin = #{HematocritHemoglobin.value},
+    hematocrit_hemoglobin_spec = #{HematocritHemoglobinSpecify.value},
+    vdrl = #{VDRL.value},
+    vdrl_specify = #{VDRLSpecify.value},
+    rubella = #{Rubella.value},
+    rubella_specify = #{RubellaSpecify.value},
+    urinalysis = #{Urinalysis.value},
+    urinalysis_specify = #{UrinalysisSpecify.value},
+    hiv = #{HIV.value},
+    hiv_specify = #{HIVSpecify.value},
+    hbsag = #{HBsAg.value},
+    hbsag_specify = #{HBsAgSpecify.value},
+    fgtt_hba1c = #{FGTTHemoglobinA1c.value},
+    fgtt_hba1c_specify = #{FGTTHemoglobinA1cSpecify.value}
+  WHERE event_details_id = #{eventDetailsId}
+</update>
+
+<resultMap id="LabTestResultMap" type="com.heartbeat.maternaldeath.MaternalDeathXmlModel$LaboratoryTest">
+  <result property="BloodTypeAndRH.value" column="blood_type_rh"/>
+  <result property="BloodTypeAndRHSpecify.value" column="blood_type_rh_specify"/>
+  <result property="HematocritHemoglobin.value" column="hematocrit_hemoglobin"/>
+  <result property="HematocritHemoglobinSpecify.value" column="hematocrit_hemoglobin_spec"/>
+  <result property="VDRL.value" column="vdrl"/>
+  <result property="VDRLSpecify.value" column="vdrl_specify"/>
+  <result property="Rubella.value" column="rubella"/>
+  <result property="RubellaSpecify.value" column="rubella_specify"/>
+  <result property="Urinalysis.value" column="urinalysis"/>
+  <result property="UrinalysisSpecify.value" column="urinalysis_specify"/>
+  <result property="HIV.value" column="hiv"/>
+  <result property="HIVSpecify.value" column="hiv_specify"/>
+  <result property="HBsAg.value" column="hbsag"/>
+  <result property="HBsAgSpecify.value" column="hbsag_specify"/>
+  <result property="FGTTHemoglobinA1c.value" column="fgtt_hba1c"/>
+  <result property="FGTTHemoglobinA1cSpecify.value" column="fgtt_hba1c_specify"/>
+  <result property="eventDetailsId" column="event_details_id"/>
+</resultMap>
+
+<!-- ===================================================== -->
+<!-- =========== pathway_before_admission ================ -->
+<!-- ===================================================== -->
+<select id="selectPathwayBeforeAdmission" parameterType="int" resultMap="PBAResultMap">
+  SELECT * FROM maternal_death_pathway_before_admission WHERE event_details_id = #{eventDetailsId}
+</select>
+
+<insert id="insertPathwayBeforeAdmission" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$PathwayBeforeAdmission">
+  INSERT INTO maternal_death_pathway_before_admission (
+    event_details_id, mode_of_arrival, referred_from, reasons_for_referral,
+    prereferral_management, accompanying_person, accompanying_person_specify,
+    date_of_onset_symptoms_known, date_of_onset_of_symptoms, time_of_onset_of_symptoms,
+    date_of_referral_decision_known, date_of_referral_decision, time_of_referral_decision,
+    date_of_transfer_from_ref_center_known, date_of_transfer_from_ref_center,
+    time_of_transfer_from_ref_center
+  ) VALUES (
+    #{eventDetailsId}, #{Modeofarrival.value}, #{Referredfrom.value}, #{Reasonsforreferral.value},
+    #{Prereferralmanagement.value}, #{Accompanyingperson.value}, #{AccompanyingpersonSpecify.value},
+    #{DateOfOnsetSymptomsKnown.value}, str_to_date(#{Dateofonsetofsymptoms.value},'%d-%m-%Y'), str_to_date(#{Timeofonsetofsymptoms.value}, '%h:%i %p'),
+    #{DateOfTheReferralDecisionKnown.value}, str_to_date(#{DateOfTheReferralDecision.value},'%d-%m-%Y'), str_to_date(#{TimeOfTheReferralDecision.value}, '%h:%i %p'),
+    #{DateOfTransferFromTheReferralCenterKnown.value}, str_to_date(#{DateOfTransferFromTheReferralCenter.value},'%d-%m-%Y'),
+    str_to_date(#{TimeOfTransferFromTheReferralCenter.value}, '%h:%i %p')
+  )
+</insert>
+
+<update id="updatePathwayBeforeAdmission" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$PathwayBeforeAdmission">
+  UPDATE maternal_death_pathway_before_admission SET
+    mode_of_arrival = #{Modeofarrival.value},
+    referred_FROM maternal_death_= #{Referredfrom.value},
+    reasons_for_referral = #{Reasonsforreferral.value},
+    prereferral_management = #{Prereferralmanagement.value},
+    accompanying_person = #{Accompanyingperson.value},
+    accompanying_person_specify = #{AccompanyingpersonSpecify.value},
+    date_of_onset_symptoms_known = #{DateOfOnsetSymptomsKnown.value},
+    date_of_onset_of_symptoms = str_to_date(#{Dateofonsetofsymptoms.value},'%d-%m-%Y'),
+    time_of_onset_of_symptoms = str_to_date(#{Timeofonsetofsymptoms.value}, '%h:%i %p'),
+    date_of_referral_decision_known = #{DateOfTheReferralDecisionKnown.value},
+    date_of_referral_decision = str_to_date(#{DateOfTheReferralDecision.value},'%d-%m-%Y'),
+    time_of_referral_decision = str_to_date(#{TimeOfTheReferralDecision.value}, '%h:%i %p'),
+    date_of_transfer_from_ref_center_known = #{DateOfTransferFromTheReferralCenterKnown.value},
+    date_of_transfer_from_ref_center = str_to_date(#{DateOfTransferFromTheReferralCenter.value},'%d-%m-%Y'),
+    time_of_transfer_from_ref_center = str_to_date(#{TimeOfTransferFromTheReferralCenter.value}, '%h:%i %p')
+  WHERE event_details_id = #{eventDetailsId}
+</update>
+
+<resultMap id="PBAResultMap" type="com.heartbeat.maternaldeath.MaternalDeathXmlModel$PathwayBeforeAdmission">
+  <result property="Modeofarrival.value" column="mode_of_arrival"/>
+  <result property="Referredfrom.value" column="referred_from"/>
+  <result property="Reasonsforreferral.value" column="reasons_for_referral"/>
+  <result property="Prereferralmanagement.value" column="prereferral_management"/>
+  <result property="Accompanyingperson.value" column="accompanying_person"/>
+  <result property="AccompanyingpersonSpecify.value" column="accompanying_person_specify"/>
+  <result property="DateOfOnsetSymptomsKnown.value" column="date_of_onset_symptoms_known"/>
+  <result property="Dateofonsetofsymptoms.value" column="date_of_onset_of_symptoms"/>
+  <result property="Timeofonsetofsymptoms.value" column="time_of_onset_of_symptoms"/>
+  <result property="DateOfTheReferralDecisionKnown.value" column="date_of_referral_decision_known"/>
+  <result property="DateOfTheReferralDecision.value" column="date_of_referral_decision"/>
+  <result property="TimeOfTheReferralDecision.value" column="time_of_referral_decision"/>
+  <result property="DateOfTransferFromTheReferralCenterKnown.value" column="date_of_transfer_from_ref_center_known"/>
+  <result property="DateOfTransferFromTheReferralCenter.value" column="date_of_transfer_from_ref_center"/>
+  <result property="TimeOfTransferFromTheReferralCenter.value" column="time_of_transfer_from_ref_center"/>
+  <result property="eventDetailsId" column="event_details_id"/>
+</resultMap>
+
+<!-- ===================================================== -->
+<!-- ===================== admission ===================== -->
+<!-- ===================================================== -->
+<select id="selectAdmission" parameterType="int" resultMap="AdmissionResultMap">
+  SELECT * FROM maternal_death_admission WHERE event_details_id = #{eventDetailsId}
+</select>
+
+<insert id="insertAdmission" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$Admission">
+  INSERT INTO maternal_death_admission (
+    event_details_id, date_of_admission_known, date_of_admission, time_of_admission,
+    main_reason_chief_complaint_for_admission
+  ) VALUES (
+    #{eventDetailsId}, #{DateOfAdmissionKnown.value}, str_to_date(#{DateOfAdmission.value},'%d-%m-%Y'), str_to_date(#{TimeOfAdmission.value}, '%h:%i %p'),
+    #{MainReasonChiefComplaintForAdmission.value}
+  )
+</insert>
+
+<update id="updateAdmission" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$Admission">
+  UPDATE maternal_death_admission SET
+    date_of_admission_known = #{DateOfAdmissionKnown.value},
+    date_of_admission = str_to_date(#{DateOfAdmission.value},'%d-%m-%Y'),
+    time_of_admission = str_to_date(#{TimeOfAdmission.value}, '%h:%i %p'),
+    main_reason_chief_complaint_for_admission = #{MainReasonChiefComplaintForAdmission.value}
+  WHERE event_details_id = #{eventDetailsId}
+</update>
+
+<resultMap id="AdmissionResultMap" type="com.heartbeat.maternaldeath.MaternalDeathXmlModel$Admission">
+  <result property="DateOfAdmissionKnown.value" column="date_of_admission_known"/>
+  <result property="DateOfAdmission.value" column="date_of_admission"/>
+  <result property="TimeOfAdmission.value" column="time_of_admission"/>
+  <result property="MainReasonChiefComplaintForAdmission.value" column="main_reason_chief_complaint_for_admission"/>
+  <result property="eventDetailsId" column="event_details_id"/>
+</resultMap>
+
+<!-- ===================================================== -->
+<!-- ==================== vital_signs ==================== -->
+<!-- ===================================================== -->
+<select id="selectVitalSigns" parameterType="int" resultMap="VitalSignsResultMap">
+  SELECT * FROM maternal_death_vital_signs WHERE event_details_id = #{eventDetailsId}
+</select>
+
+<insert id="insertVitalSigns" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$VitalSigns">
+  INSERT INTO maternal_death_vital_signs (
+    event_details_id, heart_rate, systolic_blood_pressure, diastolic_blood_pressure,
+    temp_celsius, respiratory_rate, height_cm, weight_kg, other_specify
+  ) VALUES (
+    #{eventDetailsId}, #{Heartrate.value}, #{Systolicbloodpressure.value}, #{Diastolicbloodpressure.value},
+    #{TempCelsius.value}, #{Respiratoryrate.value}, #{Height.value}, #{Weight.value}, #{OtherSpecify.value}
+  )
+</insert>
+
+<update id="updateVitalSigns" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$VitalSigns">
+  UPDATE maternal_death_vital_signs SET
+    heart_rate = #{Heartrate.value},
+    systolic_blood_pressure = #{Systolicbloodpressure.value},
+    diastolic_blood_pressure = #{Diastolicbloodpressure.value},
+    temp_celsius = #{TempCelsius.value},
+    respiratory_rate = #{Respiratoryrate.value},
+    height_cm = #{Height.value},
+    weight_kg = #{Weight.value},
+    other_specify = #{OtherSpecify.value}
+  WHERE event_details_id = #{eventDetailsId}
+</update>
+
+<resultMap id="VitalSignsResultMap" type="com.heartbeat.maternaldeath.MaternalDeathXmlModel$VitalSigns">
+  <result property="Heartrate.value" column="heart_rate"/>
+  <result property="Systolicbloodpressure.value" column="systolic_blood_pressure"/>
+  <result property="Diastolicbloodpressure.value" column="diastolic_blood_pressure"/>
+  <result property="TempCelsius.value" column="temp_celsius"/>
+  <result property="Respiratoryrate.value" column="respiratory_rate"/>
+  <result property="Height.value" column="height_cm"/>
+  <result property="Weight.value" column="weight_kg"/>
+  <result property="OtherSpecify.value" column="other_specify"/>
+  <result property="eventDetailsId" column="event_details_id"/>
+</resultMap>
+
+<!-- ===================================================== -->
+<!-- ============== abdominal_examination ================ -->
+<!-- ===================================================== -->
+<select id="selectAbdominalExamination" parameterType="int" resultMap="AbdominalExamResultMap">
+  SELECT * FROM maternal_death_abdominal_examination WHERE event_details_id = #{eventDetailsId}
+</select>
+
+<insert id="insertAbdominalExamination" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$AbdominalExamination">
+  INSERT INTO maternal_death_abdominal_examination (
+    event_details_id, fundal_height, fetal_heart_sounds_on_admission,
+    fetal_heart_sounds_on_admission_if_present, fetal_presentation
+  ) VALUES (
+    #{eventDetailsId}, #{Fundalheight.value}, #{FetalHeartSoundsOnAdmission.value},
+    #{FetalHeartSoundsOnAdmissionIfPresent.value}, #{FetalPresentation.value}
+  )
+</insert>
+
+<update id="updateAbdominalExamination" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$AbdominalExamination">
+  UPDATE maternal_death_abdominal_examination SET
+    fundal_height = #{Fundalheight.value},
+    fetal_heart_sounds_on_admission = #{FetalHeartSoundsOnAdmission.value},
+    fetal_heart_sounds_on_admission_if_present = #{FetalHeartSoundsOnAdmissionIfPresent.value},
+    fetal_presentation = #{FetalPresentation.value}
+  WHERE event_details_id = #{eventDetailsId}
+</update>
+
+<resultMap id="AbdominalExamResultMap" type="com.heartbeat.maternaldeath.MaternalDeathXmlModel$AbdominalExamination">
+  <result property="Fundalheight.value" column="fundal_height"/>
+  <result property="FetalHeartSoundsOnAdmission.value" column="fetal_heart_sounds_on_admission"/>
+  <result property="FetalHeartSoundsOnAdmissionIfPresent.value" column="fetal_heart_sounds_on_admission_if_present"/>
+  <result property="FetalPresentation.value" column="fetal_presentation"/>
+  <result property="eventDetailsId" column="event_details_id"/>
+</resultMap>
+
+<!-- ===================================================== -->
+<!-- ================= pelvic_examination ================ -->
+<!-- ===================================================== -->
+<select id="selectPelvicExamination" parameterType="int" resultMap="PelvicExamResultMap">
+  SELECT * FROM maternal_death_pelvic_examination WHERE event_details_id = #{eventDetailsId}
+</select>
+
+<insert id="insertPelvicExamination" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$PelvicExamination">
+  INSERT INTO maternal_death_pelvic_examination (
+    event_details_id, stage_of_labour, pelvic_abnormality, pelvic_abnormality_desc
+  ) VALUES (
+    #{eventDetailsId}, #{StageofLabour.value}, #{PelvicAbnormality.value}, #{PelvicabnormalityifYesDescribe.value}
+  )
+</insert>
+
+<update id="updatePelvicExamination" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$PelvicExamination">
+  UPDATE maternal_death_pelvic_examination SET
+    stage_of_labour = #{StageofLabour.value},
+    pelvic_abnormality = #{PelvicAbnormality.value},
+    pelvic_abnormality_desc = #{PelvicabnormalityifYesDescribe.value}
+  WHERE event_details_id = #{eventDetailsId}
+</update>
+
+<resultMap id="PelvicExamResultMap" type="com.heartbeat.maternaldeath.MaternalDeathXmlModel$PelvicExamination">
+  <result property="StageofLabour.value" column="stage_of_labour"/>
+  <result property="PelvicAbnormality.value" column="pelvic_abnormality"/>
+  <result property="PelvicabnormalityifYesDescribe.value" column="pelvic_abnormality_desc"/>
+  <result property="eventDetailsId" column="event_details_id"/>
+</resultMap>
+
+<!-- ===================================================== -->
+<!-- ============ admission_complications ================ -->
+<!-- ===================================================== -->
+<select id="selectAdmissionComplications" parameterType="int" resultMap="AdmissionComplicationsResultMap">
+  SELECT * FROM maternal_death_admission_complications WHERE event_details_id = #{eventDetailsId}
+</select>
+
+<insert id="insertAdmissionComplications" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$AdmissionComplications">
+  INSERT INTO maternal_death_admission_complications (
+    event_details_id, prelabour_rupture_of_membranes, pre_eclampsia, eclampsia,
+    abruption, placenta_praevia, preterm_labour, fetal_demise, sepsis, other_specify
+  ) VALUES (
+    #{eventDetailsId}, #{PrelabourRuptureOfMembranes.value}, #{PreEclampsia.value}, #{Eclampsia.value},
+    #{Abruption.value}, #{PlacentaPraevia.value}, #{PretermLabour.value}, #{FetalDemise.value}, #{Sepsis.value}, #{OtherSpecifyAdmissioncomplications.value}
+  )
+</insert>
+
+<update id="updateAdmissionComplications" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$AdmissionComplications">
+  UPDATE maternal_death_admission_complications SET
+    prelabour_rupture_of_membranes = #{PrelabourRuptureOfMembranes.value},
+    pre_eclampsia = #{PreEclampsia.value},
+    eclampsia = #{Eclampsia.value},
+    abruption = #{Abruption.value},
+    placenta_praevia = #{PlacentaPraevia.value},
+    preterm_labour = #{PretermLabour.value},
+    fetal_demise = #{FetalDemise.value},
+    sepsis = #{Sepsis.value},
+    other_specify = #{OtherSpecifyAdmissioncomplications.value}
+  WHERE event_details_id = #{eventDetailsId}
+</update>
+
+<resultMap id="AdmissionComplicationsResultMap" type="com.heartbeat.maternaldeath.MaternalDeathXmlModel$AdmissionComplications">
+  <result property="PrelabourRuptureOfMembranes.value" column="prelabour_rupture_of_membranes"/>
+  <result property="PreEclampsia.value" column="pre_eclampsia"/>
+  <result property="Eclampsia.value" column="eclampsia"/>
+  <result property="Abruption.value" column="abruption"/>
+  <result property="PlacentaPraevia.value" column="placenta_praevia"/>
+  <result property="PretermLabour.value" column="preterm_labour"/>
+  <result property="FetalDemise.value" column="fetal_demise"/>
+  <result property="Sepsis.value" column="sepsis"/>
+  <result property="OtherSpecifyAdmissioncomplications.value" column="other_specify"/>
+  <result property="eventDetailsId" column="event_details_id"/>
+</resultMap>
+
+<!-- ===================================================== -->
+<!-- ================= labour_and_birth ================== -->
+<!-- ===================================================== -->
+<select id="selectLabourAndBirth" parameterType="int" resultMap="LabourBirthResultMap">
+  SELECT * FROM maternal_death_labour_and_birth WHERE event_details_id = #{eventDetailsId}
+</select>
+
+<insert id="insertLabourAndBirth" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$LabourAndBirth">
+  INSERT INTO maternal_death_labour_and_birth (
+    event_details_id, lmp, date_lmp_known, date_of_delivery, time_of_delivery,
+    gestational_age, method_of_estimation_of_gest_age, place_of_delivery, other_place_of_delivery,
+    attended_by, attended_by_other, onset_of_labour, partogram_used, complications_of_labour_birth,
+    mode_of_delivery, other_mode_of_delivery, anaesthesia_to_mother, duration_of_labour,
+    fetal_heart_sounds_on_admission, fetal_heart_sound_present, intrapartum_hemorrhage,
+    intrapartum_infection, intrapartum_preeclampsia_eclampsia, obstructed_labour, other_specify_complications,
+    time_between_action_decision_and_birth, active_management_third_stage, retained_placenta,
+    postpartum_hemorrhage, postpartum_infection, postpartum_preeclampsia_eclampsia, number_of_pnc_pac_visits
+  ) VALUES (
+    #{eventDetailsId}, str_to_date(#{LMP.value},'%d-%m-%Y'), #{DateLMPknown.value},
+    str_to_date(#{Dateofdelivery.value},'%d-%m-%Y'),str_to_date(#{Timeofdelivery.value}, '%h:%i %p'),
+    #{GestationalAge.value}, #{Methodofestimationofgestationalage.value}, #{Placeofdelivery.value}, #{OtherPlaceofdelivery.value},
+    #{Attendedby.value}, #{AttendedbyOther.value}, #{OnsetOfLabour.value}, #{PartogramUsed.value}, #{Complicationsoflabourandbirth.value},
+    #{ModeOfDelivery.value}, #{OtherModeofdelivery.value}, #{TypeOfAnaesthesiaGivenToMother.value}, #{DurationOfLabour.value},
+    #{FetalHeartSoundsOnAdmission.value}, #{FetalheartsoundPresent.value}, #{IntrapartumHemorrhage.value},
+    #{IntrapartumInfection.value}, #{Intrapartumpreeclampsiaeclampsia.value}, #{Obstructedlabour.value}, #{OtherSpecifyComplicationsoflabourandbirth.value},
+    #{TimeBetweenActionDecisionAndBirth.value}, #{ActiveManagementOfThirdStage.value}, #{RetainedPlacenta.value},
+    #{PostpartumHemorrhage.value}, #{PostpartumInfection.value}, #{PostpartumPreEclampsiaEclampsia.value}, #{NumberOfPNCorPACVisits.value}
+  )
+</insert>
+
+<update id="updateLabourAndBirth" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$LabourAndBirth">
+  UPDATE maternal_death_labour_and_birth SET
+    lmp = str_to_date(#{LMP.value},'%d-%m-%Y'),
+    date_lmp_known = #{DateLMPknown.value},
+    date_of_delivery = str_to_date(#{Dateofdelivery.value},'%d-%m-%Y'),
+    time_of_delivery = str_to_date(#{Timeofdelivery.value}, '%h:%i %p'),
+    gestational_age = #{GestationalAge.value},
+    method_of_estimation_of_gest_age = #{Methodofestimationofgestationalage.value},
+    place_of_delivery = #{Placeofdelivery.value},
+    other_place_of_delivery = #{OtherPlaceofdelivery.value},
+    attended_by = #{Attendedby.value},
+    attended_by_other = #{AttendedbyOther.value},
+    onset_of_labour = #{OnsetOfLabour.value},
+    partogram_used = #{PartogramUsed.value},
+    complications_of_labour_birth = #{Complicationsoflabourandbirth.value},
+    mode_of_delivery = #{ModeOfDelivery.value},
+    other_mode_of_delivery = #{OtherModeofdelivery.value},
+    anaesthesia_to_mother = #{TypeOfAnaesthesiaGivenToMother.value},
+    duration_of_labour = #{DurationOfLabour.value},
+    fetal_heart_sounds_on_admission = #{FetalHeartSoundsOnAdmission.value},
+    fetal_heart_sound_present = #{FetalheartsoundPresent.value},
+    intrapartum_hemorrhage = #{IntrapartumHemorrhage.value},
+    intrapartum_infection = #{IntrapartumInfection.value},
+    intrapartum_preeclampsia_eclampsia = #{Intrapartumpreeclampsiaeclampsia.value},
+    obstructed_labour = #{Obstructedlabour.value},
+    other_specify_complications = #{OtherSpecifyComplicationsoflabourandbirth.value},
+    time_between_action_decision_and_birth = #{TimeBetweenActionDecisionAndBirth.value},
+    active_management_third_stage = #{ActiveManagementOfThirdStage.value},
+    retained_placenta = #{RetainedPlacenta.value},
+    postpartum_hemorrhage = #{PostpartumHemorrhage.value},
+    postpartum_infection = #{PostpartumInfection.value},
+    postpartum_preeclampsia_eclampsia = #{PostpartumPreEclampsiaEclampsia.value},
+    number_of_pnc_pac_visits = #{NumberOfPNCorPACVisits.value}
+  WHERE event_details_id = #{eventDetailsId}
+</update>
+
+<resultMap id="LabourBirthResultMap" type="com.heartbeat.maternaldeath.MaternalDeathXmlModel$LabourAndBirth">
+  <result property="LMP.value" column="lmp"/>
+  <result property="DateLMPknown.value" column="date_lmp_known"/>
+  <result property="Dateofdelivery.value" column="date_of_delivery"/>
+  <result property="Timeofdelivery.value" column="time_of_delivery"/>
+  <result property="GestationalAge.value" column="gestational_age"/>
+  <result property="Methodofestimationofgestationalage.value" column="method_of_estimation_of_gest_age"/>
+  <result property="Placeofdelivery.value" column="place_of_delivery"/>
+  <result property="OtherPlaceofdelivery.value" column="other_place_of_delivery"/>
+  <result property="Attendedby.value" column="attended_by"/>
+  <result property="AttendedbyOther.value" column="attended_by_other"/>
+  <result property="OnsetOfLabour.value" column="onset_of_labour"/>
+  <result property="PartogramUsed.value" column="partogram_used"/>
+  <result property="Complicationsoflabourandbirth.value" column="complications_of_labour_birth"/>
+  <result property="ModeOfDelivery.value" column="mode_of_delivery"/>
+  <result property="OtherModeofdelivery.value" column="other_mode_of_delivery"/>
+  <result property="TypeOfAnaesthesiaGivenToMother.value" column="anaesthesia_to_mother"/>
+  <result property="DurationOfLabour.value" column="duration_of_labour"/>
+  <result property="FetalHeartSoundsOnAdmission.value" column="fetal_heart_sounds_on_admission"/>
+  <result property="FetalheartsoundPresent.value" column="fetal_heart_sound_present"/>
+  <result property="IntrapartumHemorrhage.value" column="intrapartum_hemorrhage"/>
+  <result property="IntrapartumInfection.value" column="intrapartum_infection"/>
+  <result property="Intrapartumpreeclampsiaeclampsia.value" column="intrapartum_preeclampsia_eclampsia"/>
+  <result property="Obstructedlabour.value" column="obstructed_labour"/>
+  <result property="OtherSpecifyComplicationsoflabourandbirth.value" column="other_specify_complications"/>
+  <result property="TimeBetweenActionDecisionAndBirth.value" column="time_between_action_decision_and_birth"/>
+  <result property="ActiveManagementOfThirdStage.value" column="active_management_third_stage"/>
+  <result property="RetainedPlacenta.value" column="retained_placenta"/>
+  <result property="PostpartumHemorrhage.value" column="postpartum_hemorrhage"/>
+  <result property="PostpartumInfection.value" column="postpartum_infection"/>
+  <result property="PostpartumPreEclampsiaEclampsia.value" column="postpartum_preeclampsia_eclampsia"/>
+  <result property="NumberOfPNCorPACVisits.value" column="number_of_pnc_pac_visits"/>
+  <result property="eventDetailsId" column="event_details_id"/>
+</resultMap>
+
+<!-- ===================================================== -->
+<!-- =================== apgar_score ===================== -->
+<!-- ===================================================== -->
+<select id="selectApgarScore" parameterType="int" resultMap="ApgarScoreResultMap">
+  SELECT * FROM maternal_death_apgar_score WHERE event_details_id = #{eventDetailsId}
+</select>
+
+<insert id="insertApgarScore" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$ApgarScore">
+  INSERT INTO maternal_death_apgar_score (
+    event_details_id, apgar_score_1, apgar_score_5, apgar_score_10, resuscitation,
+    other_resuscitation, sex_of_baby, birth_weight_code, exact_weight_grams
+  ) VALUES (
+    #{eventDetailsId}, #{ApgarScore1.value}, #{ApgarScore5.value}, #{ApgarScore10.value}, #{Resuscitation.value},
+    #{OtherResuscitation.value}, #{SexOfBaby.value}, #{BirthWeight.value}, #{SpecifyTheExactWeight.value}
+  )
+</insert>
+
+<update id="updateApgarScore" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$ApgarScore">
+  UPDATE maternal_death_apgar_score SET
+    apgar_score_1 = #{ApgarScore1.value},
+    apgar_score_5 = #{ApgarScore5.value},
+    apgar_score_10 = #{ApgarScore10.value},
+    resuscitation = #{Resuscitation.value},
+    other_resuscitation = #{OtherResuscitation.value},
+    sex_of_baby = #{SexOfBaby.value},
+    birth_weight_code = #{BirthWeight.value},
+    exact_weight_grams = #{SpecifyTheExactWeight.value}
+  WHERE event_details_id = #{eventDetailsId}
+</update>
+
+<resultMap id="ApgarScoreResultMap" type="com.heartbeat.maternaldeath.MaternalDeathXmlModel$ApgarScore">
+  <result property="ApgarScore1.value" column="apgar_score_1"/>
+  <result property="ApgarScore5.value" column="apgar_score_5"/>
+  <result property="ApgarScore10.value" column="apgar_score_10"/>
+  <result property="Resuscitation.value" column="resuscitation"/>
+  <result property="OtherResuscitation.value" column="other_resuscitation"/>
+  <result property="SexOfBaby.value" column="sex_of_baby"/>
+  <result property="BirthWeight.value" column="birth_weight_code"/>
+  <result property="SpecifyTheExactWeight.value" column="exact_weight_grams"/>
+  <result property="eventDetailsId" column="event_details_id"/>
+</resultMap>
+
+<!-- ===================================================== -->
+<!-- ================= early_pregnancy =================== -->
+<!-- ===================================================== -->
+<select id="selectEarlyPregnancy" parameterType="int" resultMap="EarlyPregnancyResultMap">
+  SELECT * FROM maternal_death_early_pregnancy WHERE event_details_id = #{eventDetailsId}
+</select>
+
+<insert id="insertEarlyPregnancy" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$EarlyPregnancy">
+  INSERT INTO maternal_death_early_pregnancy (
+    event_details_id, evacuation, laparotomy, hysterotomy, transfusion, other_early_pregnancy
+  ) VALUES (
+    #{eventDetailsId}, #{Evacuation.value}, #{Laparotomy.value}, #{Hysterotomy.value}, #{Transfusion.value}, #{OtherEarlypregnancy.value}
+  )
+</insert>
+
+<update id="updateEarlyPregnancy" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$EarlyPregnancy">
+  UPDATE maternal_death_early_pregnancy SET
+    evacuation = #{Evacuation.value},
+    laparotomy = #{Laparotomy.value},
+    hysterotomy = #{Hysterotomy.value},
+    transfusion = #{Transfusion.value},
+    other_early_pregnancy = #{OtherEarlypregnancy.value}
+  WHERE event_details_id = #{eventDetailsId}
+</update>
+
+<resultMap id="EarlyPregnancyResultMap" type="com.heartbeat.maternaldeath.MaternalDeathXmlModel$EarlyPregnancy">
+  <result property="Evacuation.value" column="evacuation"/>
+  <result property="Laparotomy.value" column="laparotomy"/>
+  <result property="Hysterotomy.value" column="hysterotomy"/>
+  <result property="Transfusion.value" column="transfusion"/>
+  <result property="OtherEarlypregnancy.value" column="other_early_pregnancy"/>
+  <result property="eventDetailsId" column="event_details_id"/>
+</resultMap>
+
+<!-- ===================================================== -->
+<!-- ==================== antepartum ===================== -->
+<!-- ===================================================== -->
+<select id="selectAntepartum" parameterType="int" resultMap="AntepartumResultMap">
+  SELECT * FROM maternal_death_antepartum WHERE event_details_id = #{eventDetailsId}
+</select>
+
+<insert id="insertAntepartum" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$Antepartum">
+  INSERT INTO maternal_death_antepartum (
+    event_details_id, transfusion, version, labour_induction, magnesium_sulfate, antibiotics, other_antepartum
+  ) VALUES (
+    #{eventDetailsId}, #{Antepartum.Transfusion.value}, #{Version.value}, #{LabourInduction.value},
+    #{Antepartum.MagnesiumSulfate.value}, #{Antepartum.Antibiotics.value}, #{OtherAntepartum.value}
+  )
+</insert>
+
+<update id="updateAntepartum" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$Antepartum">
+  UPDATE maternal_death_antepartum SET
+    transfusion = #{Antepartum.Transfusion.value},
+    version = #{Version.value},
+    labour_induction = #{LabourInduction.value},
+    magnesium_sulfate = #{Antepartum.MagnesiumSulfate.value},
+    antibiotics = #{Antepartum.Antibiotics.value},
+    other_antepartum = #{OtherAntepartum.value}
+  WHERE event_details_id = #{eventDetailsId}
+</update>
+
+<resultMap id="AntepartumResultMap" type="com.heartbeat.maternaldeath.MaternalDeathXmlModel$Antepartum">
+  <result property="Antepartum.Transfusion.value" column="transfusion"/>
+  <result property="Version.value" column="version"/>
+  <result property="LabourInduction.value" column="labour_induction"/>
+  <result property="Antepartum.MagnesiumSulfate.value" column="magnesium_sulfate"/>
+  <result property="Antepartum.Antibiotics.value" column="antibiotics"/>
+  <result property="OtherAntepartum.value" column="other_antepartum"/>
+  <result property="eventDetailsId" column="event_details_id"/>
+</resultMap>
+
+<!-- ===================================================== -->
+<!-- ==================== intrapartum ==================== -->
+<!-- ===================================================== -->
+<select id="selectIntrapartum" parameterType="int" resultMap="IntrapartumResultMap">
+  SELECT * FROM maternal_death_intrapartum WHERE event_details_id = #{eventDetailsId}
+</select>
+
+<insert id="insertIntrapartum" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$Intrapartum">
+  INSERT INTO maternal_death_intrapartum (
+    event_details_id, hysterectomy, transfusion, magnesium_sulfate, antibiotics,
+    destructive_operations, other_intrapartum
+  ) VALUES (
+    #{eventDetailsId}, #{Intrapartum.Hysterectomy.value}, #{Intrapartum.Transfusion.value}, #{Intrapartum.MagnesiumSulfate.value},
+    #{Intrapartum.Antibiotics.value}, #{DestructiveOperations.value}, #{OtherIntrapartum.value}
+  )
+</insert>
+
+<update id="updateIntrapartum" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$Intrapartum">
+  UPDATE maternal_death_intrapartum SET
+    hysterectomy = #{Intrapartum.Hysterectomy.value},
+    transfusion = #{Intrapartum.Transfusion.value},
+    magnesium_sulfate = #{Intrapartum.MagnesiumSulfate.value},
+    antibiotics = #{Intrapartum.Antibiotics.value},
+    destructive_operations = #{DestructiveOperations.value},
+    other_intrapartum = #{OtherIntrapartum.value}
+  WHERE event_details_id = #{eventDetailsId}
+</update>
+
+<resultMap id="IntrapartumResultMap" type="com.heartbeat.maternaldeath.MaternalDeathXmlModel$Intrapartum">
+  <result property="Intrapartum.Hysterectomy.value" column="hysterectomy"/>
+  <result property="Intrapartum.Transfusion.value" column="transfusion"/>
+  <result property="Intrapartum.MagnesiumSulfate.value" column="magnesium_sulfate"/>
+  <result property="Intrapartum.Antibiotics.value" column="antibiotics"/>
+  <result property="DestructiveOperations.value" column="destructive_operations"/>
+  <result property="OtherIntrapartum.value" column="other_intrapartum"/>
+  <result property="eventDetailsId" column="event_details_id"/>
+</resultMap>
+
+<!-- ===================================================== -->
+<!-- ===================== postpartum ==================== -->
+<!-- ===================================================== -->
+<select id="selectPostpartum" parameterType="int" resultMap="PostpartumResultMap">
+  SELECT * FROM maternal_death_postpartum WHERE event_details_id = #{eventDetailsId}
+</select>
+
+<insert id="insertPostpartum" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$Postpartum">
+  INSERT INTO maternal_death_postpartum (
+    event_details_id, evacuation, laparotomy, hysterotomy, hysterectomy, transfusion, magnesium_sulfate,
+    antibiotics, oxytocin, misoprostol, others_postpartum
+  ) VALUES (
+    #{eventDetailsId}, #{Postpartum.Evacuation.value}, #{Postpartum.Laparotomy.value}, #{Postpartum.Hysterotomy.value},
+    #{Postpartum.Hysterectomy.value}, #{Postpartum.Transfusion.value}, #{Postpartum.MagnesiumSulfate.value},
+    #{Postpartum.Antibiotics.value}, #{Oxytocin.value}, #{Misoprostol.value}, #{OthersPostpartum.value}
+  )
+</insert>
+
+<update id="updatePostpartum" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$Postpartum">
+  UPDATE maternal_death_postpartum SET
+    evacuation = #{Postpartum.Evacuation.value},
+    laparotomy = #{Postpartum.Laparotomy.value},
+    hysterotomy = #{Postpartum.Hysterotomy.value},
+    hysterectomy = #{Postpartum.Hysterectomy.value},
+    transfusion = #{Postpartum.Transfusion.value},
+    magnesium_sulfate = #{Postpartum.MagnesiumSulfate.value},
+    antibiotics = #{Postpartum.Antibiotics.value},
+    oxytocin = #{Oxytocin.value},
+    misoprostol = #{Misoprostol.value},
+    others_postpartum = #{OthersPostpartum.value}
+  WHERE event_details_id = #{eventDetailsId}
+</update>
+
+<resultMap id="PostpartumResultMap" type="com.heartbeat.maternaldeath.MaternalDeathXmlModel$Postpartum">
+  <result property="Postpartum.Evacuation.value" column="evacuation"/>
+  <result property="Postpartum.Laparotomy.value" column="laparotomy"/>
+  <result property="Postpartum.Hysterotomy.value" column="hysterotomy"/>
+  <result property="Postpartum.Hysterectomy.value" column="hysterectomy"/>
+  <result property="Postpartum.Transfusion.value" column="transfusion"/>
+  <result property="Postpartum.MagnesiumSulfate.value" column="magnesium_sulfate"/>
+  <result property="Postpartum.Antibiotics.value" column="antibiotics"/>
+  <result property="Oxytocin.value" column="oxytocin"/>
+  <result property="Misoprostol.value" column="misoprostol"/>
+  <result property="OthersPostpartum.value" column="others_postpartum"/>
+  <result property="eventDetailsId" column="event_details_id"/>
+</resultMap>
+
+<!-- ===================================================== -->
+<!-- =============== other_interventions ================= -->
+<!-- ===================================================== -->
+<select id="selectOtherInterventions" parameterType="int" resultMap="OtherInterventionsResultMap">
+  SELECT * FROM maternal_death_other_interventions WHERE event_details_id = #{eventDetailsId}
+</select>
+
+<insert id="insertOtherInterventions" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$OtherInterventions">
+  INSERT INTO maternal_death_other_interventions (
+    event_details_id, general_anesthesia, epidural, spinal, local_anesthesia, icu_ventilation,
+    invasive_monitoring, antenatal_steroid, other_interventions
+  ) VALUES (
+    #{eventDetailsId}, #{GeneralAnesthesia.value}, #{Epidural.value}, #{Spinal.value}, #{Local.value}, #{ICUventilation.value},
+    #{InvasiveMonitoring.value}, #{AntenatalSteroid.value}, #{OtherInterventions.value}
+  )
+</insert>
+
+<update id="updateOtherInterventions" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$OtherInterventions">
+  UPDATE maternal_death_other_interventions SET
+    general_anesthesia = #{GeneralAnesthesia.value},
+    epidural = #{Epidural.value},
+    spinal = #{Spinal.value},
+    local_anesthesia = #{Local.value},
+    icu_ventilation = #{ICUventilation.value},
+    invasive_monitoring = #{InvasiveMonitoring.value},
+    antenatal_steroid = #{AntenatalSteroid.value},
+    other_interventions = #{OtherInterventions.value}
+  WHERE event_details_id = #{eventDetailsId}
+</update>
+
+<resultMap id="OtherInterventionsResultMap" type="com.heartbeat.maternaldeath.MaternalDeathXmlModel$OtherInterventions">
+  <result property="GeneralAnesthesia.value" column="general_anesthesia"/>
+  <result property="Epidural.value" column="epidural"/>
+  <result property="Spinal.value" column="spinal"/>
+  <result property="Local.value" column="local_anesthesia"/>
+  <result property="ICUventilation.value" column="icu_ventilation"/>
+  <result property="InvasiveMonitoring.value" column="invasive_monitoring"/>
+  <result property="AntenatalSteroid.value" column="antenatal_steroid"/>
+  <result property="OtherInterventions.value" column="other_interventions"/>
+  <result property="eventDetailsId" column="event_details_id"/>
+</resultMap>
+
+<!-- ===================================================== -->
+<!-- =============== details_of_the_death ================ -->
+<!-- ===================================================== -->
+<select id="selectDetailsOfTheDeath" parameterType="int" resultMap="DetailsOfDeathResultMap">
+  SELECT * FROM maternal_death_details_of_the_death WHERE event_details_id = #{eventDetailsId}
+</select>
+
+<insert id="insertDetailsOfTheDeath" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$DetailsOfTheDeath">
+  INSERT INTO maternal_death_details_of_the_death (
+    event_details_id, date_of_death, time_of_death, when_death_occurred,
+    pregnancy_status_at_time_of_death, pregnancy_status_other, days_after_delivery_or_abortion,
+    direct_cause_of_death_icdmm, underlying_cause_of_death_icdmm, contributory_causes_of_death, additional_details
+  ) VALUES (
+    #{eventDetailsId}, str_to_date(#{Dateofdeath.value},'%d-%m-%Y'), str_to_date(#{Timeofdeath.value}, '%h:%i %p'), #{WhenDeathOccurred.value},
+    #{PregnancyStatusAttimeOfDeath.value}, #{PregnancyStatusAttimeOfDeathOthers.value}, #{Ifpostpartumpostabortiondeathhowmanydaysafterdeliveryabortiondeathoccurred.value},
+    #{DirectCauseOfDeathICDMM.value}, #{UnderlyingCauseOfDeathICDMM.value}, #{Contributorycausesofdeath.value}, #{AdditionalDetailsifApplicable.value}
+  )
+</insert>
+
+<update id="updateDetailsOfTheDeath" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$DetailsOfTheDeath">
+  UPDATE maternal_death_details_of_the_death SET
+    date_of_death = str_to_date(#{Dateofdeath.value},'%d-%m-%Y'),
+    time_of_death = str_to_date(#{Timeofdeath.value}, '%h:%i %p'),
+    when_death_occurred = #{WhenDeathOccurred.value},
+    pregnancy_status_at_time_of_death = #{PregnancyStatusAttimeOfDeath.value},
+    pregnancy_status_other = #{PregnancyStatusAttimeOfDeathOthers.value},
+    days_after_delivery_or_abortion = #{Ifpostpartumpostabortiondeathhowmanydaysafterdeliveryabortiondeathoccurred.value},
+    direct_cause_of_death_icdmm = #{DirectCauseOfDeathICDMM.value},
+    underlying_cause_of_death_icdmm = #{UnderlyingCauseOfDeathICDMM.value},
+    contributory_causes_of_death = #{Contributorycausesofdeath.value},
+    additional_details = #{AdditionalDetailsifApplicable.value}
+  WHERE event_details_id = #{eventDetailsId}
+</update>
+
+<resultMap id="DetailsOfDeathResultMap" type="com.heartbeat.maternaldeath.MaternalDeathXmlModel$DetailsOfTheDeath">
+  <result property="Dateofdeath.value" column="date_of_death"/>
+  <result property="Timeofdeath.value" column="time_of_death"/>
+  <result property="WhenDeathOccurred.value" column="when_death_occurred"/>
+  <result property="PregnancyStatusAttimeOfDeath.value" column="pregnancy_status_at_time_of_death"/>
+  <result property="PregnancyStatusAttimeOfDeathOthers.value" column="pregnancy_status_other"/>
+  <result property="Ifpostpartumpostabortiondeathhowmanydaysafterdeliveryabortiondeathoccurred.value" column="days_after_delivery_or_abortion"/>
+  <result property="DirectCauseOfDeathICDMM.value" column="direct_cause_of_death_icdmm"/>
+  <result property="UnderlyingCauseOfDeathICDMM.value" column="underlying_cause_of_death_icdmm"/>
+  <result property="Contributorycausesofdeath.value" column="contributory_causes_of_death"/>
+  <result property="AdditionalDetailsifApplicable.value" column="additional_details"/>
+  <result property="eventDetailsId" column="event_details_id"/>
+</resultMap>
+
+<!-- ===================================================== -->
+<!-- ================== critical_delays ================== -->
+<!-- ===================================================== -->
+<select id="selectCriticalDelays" parameterType="int" resultMap="CriticalDelaysResultMap">
+  SELECT * FROM maternal_death_critical_delays WHERE event_details_id = #{eventDetailsId}
+</select>
+
+<insert id="insertCriticalDelays" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$CriticalDelays">
+  INSERT INTO maternal_death_critical_delays (
+    event_details_id, delay1_in_seeking_care, delay1_identify,
+    delay2_in_reaching_facility, delay2_identify, delay3_within_hc_facility, delay3_identify
+  ) VALUES (
+    #{eventDetailsId}, #{Delay1inseekingcare.value}, #{Delay1Identify.value},
+    #{Delay2inreachingfacility.value}, #{Delay2Identify.value}, #{Delay3withinhealthcarefacility.value}, #{Delay3Identify.value}
+  )
+</insert>
+
+<update id="updateCriticalDelays" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$CriticalDelays">
+  UPDATE maternal_death_critical_delays SET
+    delay1_in_seeking_care = #{Delay1inseekingcare.value},
+    delay1_identify = #{Delay1Identify.value},
+    delay2_in_reaching_facility = #{Delay2inreachingfacility.value},
+    delay2_identify = #{Delay2Identify.value},
+    delay3_within_hc_facility = #{Delay3withinhealthcarefacility.value},
+    delay3_identify = #{Delay3Identify.value}
+  WHERE event_details_id = #{eventDetailsId}
+</update>
+
+<resultMap id="CriticalDelaysResultMap" type="com.heartbeat.maternaldeath.MaternalDeathXmlModel$CriticalDelays">
+  <result property="Delay1inseekingcare.value" column="delay1_in_seeking_care"/>
+  <result property="Delay1Identify.value" column="delay1_identify"/>
+  <result property="Delay2inreachingfacility.value" column="delay2_in_reaching_facility"/>
+  <result property="Delay2Identify.value" column="delay2_identify"/>
+  <result property="Delay3withinhealthcarefacility.value" column="delay3_within_hc_facility"/>
+  <result property="Delay3Identify.value" column="delay3_identify"/>
+  <result property="eventDetailsId" column="event_details_id"/>
+</resultMap>
+
+<!-- ===================================================== -->
+<!-- ================= modifiable_factors ================= -->
+<!-- ===================================================== -->
+<select id="selectModifiableFactors" parameterType="int" resultMap="ModifiableFactorsResultMap">
+  SELECT * FROM maternal_death_modifiable_factors WHERE event_details_id = #{eventDetailsId}
+</select>
+
+<insert id="insertModifiableFactors" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$ModifiableFactors">
+  INSERT INTO maternal_death_modifiable_factors (
+    event_details_id, family_related, family_related_identify, administration_related,
+    administration_related_identify, provider_related, provider_related_identify,
+    others_modifiable_factor, actions_to_address_delays_modifiable, was_the_death_preventable, further_comments
+  ) VALUES (
+    #{eventDetailsId}, #{FamilyRelated.value}, #{FamilyRelatedIdentify.value}, #{AdministrationRelated.value},
+    #{AdministrationRelatedIdentify.value}, #{ProviderRelated.value}, #{ProviderRelatedIdentify.value},
+    #{OthersModifiablefactor.value}, #{Actiontoaddressthecriticaldelaysandmodifiablefactors.value}, #{WasTheDeathPreventable.value}, #{FurtherComments.value}
+  )
+</insert>
+
+<update id="updateModifiableFactors" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$ModifiableFactors">
+  UPDATE maternal_death_modifiable_factors SET
+    family_related = #{FamilyRelated.value},
+    family_related_identify = #{FamilyRelatedIdentify.value},
+    administration_related = #{AdministrationRelated.value},
+    administration_related_identify = #{AdministrationRelatedIdentify.value},
+    provider_related = #{ProviderRelated.value},
+    provider_related_identify = #{ProviderRelatedIdentify.value},
+    others_modifiable_factor = #{OthersModifiablefactor.value},
+    actions_to_address_delays_modifiable = #{Actiontoaddressthecriticaldelaysandmodifiablefactors.value},
+    was_the_death_preventable = #{WasTheDeathPreventable.value},
+    further_comments = #{FurtherComments.value}
+  WHERE event_details_id = #{eventDetailsId}
+</update>
+
+<resultMap id="ModifiableFactorsResultMap" type="com.heartbeat.maternaldeath.MaternalDeathXmlModel$ModifiableFactors">
+  <result property="FamilyRelated.value" column="family_related"/>
+  <result property="FamilyRelatedIdentify.value" column="family_related_identify"/>
+  <result property="AdministrationRelated.value" column="administration_related"/>
+  <result property="AdministrationRelatedIdentify.value" column="administration_related_identify"/>
+  <result property="ProviderRelated.value" column="provider_related"/>
+  <result property="ProviderRelatedIdentify.value" column="provider_related_identify"/>
+  <result property="OthersModifiablefactor.value" column="others_modifiable_factor"/>
+  <result property="Actiontoaddressthecriticaldelaysandmodifiablefactors.value" column="actions_to_address_delays_modifiable"/>
+  <result property="WasTheDeathPreventable.value" column="was_the_death_preventable"/>
+  <result property="FurtherComments.value" column="further_comments"/>
+  <result property="eventDetailsId" column="event_details_id"/>
+</resultMap>
+
+<!-- ===================================================== -->
+<!-- ================== form_completed_by ================= -->
+<!-- ===================================================== -->
+<select id="selectFormcompletedby" parameterType="int" resultMap="FormCompletedByResultMap">
+  SELECT * FROM maternal_death_formcompletedby WHERE event_details_id = #{eventDetailsId}
+</select>
+
+<insert id="insertFormcompletedby" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$Formcompletedby">
+  INSERT INTO maternal_death_formcompletedby (
+    event_details_id, name, email, date_of_review, time_of_review, designation
+  ) VALUES (
+    #{eventDetailsId}, #{Name.value}, #{Email.value},
+     str_to_date(#{DateofReview.value},'%d-%m-%Y'), 
+     str_to_date(#{TimeofReview.value}, '%h:%i %p'), #{Designation.value}
+  )
+</insert>
+
+<update id="updateFormcompletedby" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$Formcompletedby">
+  UPDATE maternal_death_formcompletedby SET
+    name = #{Name.value},
+    email = #{Email.value},
+    date_of_review = str_to_date(#{DateofReview.value},'%d-%m-%Y'),
+    time_of_review = str_to_date(#{TimeofReview.value}, '%h:%i %p'),
+    designation = #{Designation.value}
+  WHERE event_details_id = #{eventDetailsId}
+</update>
+
+<resultMap id="FormCompletedByResultMap" type="com.heartbeat.maternaldeath.MaternalDeathXmlModel$Formcompletedby">
+  <result property="Name.value" column="name"/>
+  <result property="Email.value" column="email"/>
+  <result property="DateofReview.value" column="date_of_review"/>
+  <result property="TimeofReview.value" column="time_of_review"/>
+  <result property="Designation.value" column="designation"/>
+  <result property="eventDetailsId" column="event_details_id"/>
+</resultMap>
+
+<!-- ===================================================== -->
+<!-- =========== actions_at_hospital_level =============== -->
+<!-- ===================================================== -->
+<select id="selectActionsAtHospitalLevel" parameterType="int" resultMap="ActionsAtHospitalLevelResultMap">
+  SELECT * FROM maternal_death_actions_at_hospital_level WHERE event_details_id = #{eventDetailsId}
+</select>
+
+<insert id="insertActionsAtHospitalLevel" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$ActionsAtHospitalLevel">
+  INSERT INTO maternal_death_actions_at_hospital_level (
+    event_details_id, action_recommended_by_mnm_review_committee, date, chairperson_or_signature, email, contact_number
+  ) VALUES (
+    #{eventDetailsId}, #{ActionrecommendedbytheMandMreviewcommittee.value}, str_to_date(#{Date.value},'%d-%m-%Y'),
+    #{ChairpersonNameORmpdsrSignature.value}, #{Email.value}, #{Contactnumber.value}
+  )
+</insert>
+
+<update id="updateActionsAtHospitalLevel" parameterType="com.heartbeat.maternaldeath.MaternalDeathXmlModel$ActionsAtHospitalLevel">
+  UPDATE maternal_death_actions_at_hospital_level SET
+    action_recommended_by_mnm_review_committee = #{ActionrecommendedbytheMandMreviewcommittee.value},
+    date = str_to_date(#{Date.value},'%d-%m-%Y'),
+    chairperson_or_signature = #{ChairpersonNameORmpdsrSignature.value},
+    email = #{Email.value},
+    contact_number = #{Contactnumber.value}
+  WHERE event_details_id = #{eventDetailsId}
+</update>
+
+<resultMap id="ActionsAtHospitalLevelResultMap" type="com.heartbeat.maternaldeath.MaternalDeathXmlModel$ActionsAtHospitalLevel">
+  <result property="ActionrecommendedbytheMandMreviewcommittee.value" column="action_recommended_by_mnm_review_committee"/>
+  <result property="Date.value" column="date"/>
+  <result property="ChairpersonNameORmpdsrSignature.value" column="chairperson_or_signature"/>
+  <result property="Email.value" column="email"/>
+  <result property="Contactnumber.value" column="contact_number"/>
+  <result property="eventDetailsId" column="event_details_id"/>
+</resultMap>
+
+<insert id="insertIntoMaternalDeathAPI"
+	parameterType="java.util.HashMap">
+	INSERT INTO `maternal_death_api`
+	(`event_details_id`,
+	`api_status`,
+	`api_send_datetime`,
+	`api_send_by`,
+	`api_response_code`,
+	`request_file_name`,
+	`response_file_name`)
+	VALUES
+	(#{event_details_id},
+	#{api_status},
+	#{api_send_datetime},
+	#{api_send_by},
+	#{api_response_code},
+	#{request_file_name},
+	#{response_file_name});
+
+</insert>
+
+</mapper>

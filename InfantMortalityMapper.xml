@@ -1,0 +1,1364 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.heartbeat.mapper.db1.InfantMortalityMapper">
+
+<select id="getMainDetIdFromIpId"  parameterType="int" resultType="int">
+	select id as mainDetId from infant_mortality_main_det where ip_id = #{id} or rehab_bill_id =#{id} order by id desc limit 1
+</select>
+
+<!-- Main DET - Start -->
+<select id="selectMainDet" parameterType="int" resultMap="MainDetResultMap">
+    select domain,event_closed_date,event_record_status,event_occurrence_date,event_occurrence_time,event_submitted_date,
+	    event_submitted_time,event_updated_date,coalesce(facility_city,officeregion) as facility_city,
+	    coalesce(facility_group,office_Name) as facility_group,facility_id as facility_mfid,
+	    coalesce(facility_regions,officeregion)as facility_regions,facility_type,hcf_event_id,
+	    coalesce(health_care_facility_name,off_displayname) as health_care_facility_name,
+	    md.id,md.ip_id,md.rehab_bill_id from patient_visits pv
+		left join mst_branches mb on mb.office_Id = pv.office_id
+		left join infant_mortality_main_det md on md.ip_id = pv.ip_id
+		where pv.ip_id= #{id} group by mb.office_id order by pv.consult_id desc limit 1 
+</select>
+
+<insert id="insertMainDet" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$MainDet">
+    INSERT INTO infant_mortality_main_det (domain, event_occurrence_date, event_occurrence_time,
+                                           event_submitted_date, event_submitted_time, event_updated_date,
+                                           facility_regions, facility_city, health_care_facility_name,
+                                           facility_mfid, facility_group, facility_type, hcf_event_id,
+                                           event_closed_date, event_record_status, ip_id, rehab_bill_id)
+    VALUES (#{Domain.value}, str_to_date(#{EventOccurrenceDate.value},'%d-%m-%Y'), str_to_date(#{EventOccurrenceTime.value}, '%h:%i %p'),
+            str_to_date(#{EventSubmittedDate.value},'%d-%m-%Y'), str_to_date(#{EventSubmittedTime.value}, '%h:%i %p'), str_to_date(#{EventUpdatedDate.value},'%d-%m-%Y'),
+            #{FacilityRegions.value}, #{FacilityCity.value}, #{HealthCareFacilityName.value},
+            #{FacilityMFID.value}, #{FacilityGroup.value}, #{FacilityType.value}, #{HCFEventID.value},
+            str_to_date(#{EventClosedDate.value},'%d-%m-%Y'),#{EventRecordStatus.value}, #{ipId}, #{rehabBillId})
+</insert>
+
+<update id="updateMainDet" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$MainDet">
+    UPDATE infant_mortality_main_det
+    SET domain = #{Domain.value},
+        event_occurrence_date = str_to_date(#{EventOccurrenceDate.value},'%d-%m-%Y'),
+        event_occurrence_time = str_to_date(#{EventOccurrenceTime.value}, '%h:%i %p'),
+        event_submitted_date = str_to_date(#{EventSubmittedDate.value},'%d-%m-%Y'),
+        event_submitted_time = str_to_date(#{EventSubmittedTime.value}, '%h:%i %p'),
+        event_updated_date = str_to_date(#{EventUpdatedDate.value},'%d-%m-%Y'),
+        facility_regions = #{FacilityRegions.value},
+        facility_city = #{FacilityCity.value},
+        health_care_facility_name = #{HealthCareFacilityName.value},
+        facility_mfid = #{FacilityMFID.value},
+        facility_group = #{FacilityGroup.value},
+        facility_type = #{FacilityType.value},
+        hcf_event_id = #{HCFEventID.value},
+        event_closed_date = str_to_date(#{EventClosedDate.value},'%d-%m-%Y'),
+        event_record_status = #{EventRecordStatus.value},
+        ip_id = #{ipId},
+        rehab_bill_id = #{rehabBillId}
+    WHERE ip_id = #{ipId}
+</update>
+
+<resultMap id="MainDetResultMap" type="com.heartbeat.infantmortality.InfantMortalityXmlModel$MainDet">
+    <result property="Domain.value" column="domain" />
+    <result property="EventOccurrenceDate.value" column="event_occurrence_date" />
+    <result property="EventOccurrenceTime.value" column="event_occurrence_time" />
+    <result property="EventSubmittedDate.value" column="event_submitted_date" />
+    <result property="EventSubmittedTime.value" column="event_submitted_time" />
+    <result property="EventUpdatedDate.value" column="event_updated_date" />
+    <result property="FacilityRegions.value" column="facility_regions" />
+    <result property="FacilityCity.value" column="facility_city" />
+    <result property="HealthCareFacilityName.value" column="health_care_facility_name" />
+    <result property="FacilityMFID.value" column="facility_mfid" />
+    <result property="FacilityGroup.value" column="facility_group" />
+    <result property="FacilityType.value" column="facility_type" />
+    <result property="HCFEventID.value" column="hcf_event_id" />
+    <result property="EventClosedDate.value" column="event_closed_date" />
+    <result property="EventRecordStatus.value" column="event_record_status" />
+    <result property="ipId" column="ip_id" />
+    <result property="rehabBillId" column="rehab_bill_id" />
+    <result property="id" column="id" />
+</resultMap>
+<!-- Main DET - End -->
+
+<!-- PBA - Start -->
+<select id="selectPBA" parameterType="int" resultMap="PBAResultMap">
+    SELECT id, transreferred, referredfrom, reasons_for_referral, pre_referral_management,
+           ambulance, medicines_and_health_on_board, medicines_and_health_on_board_specify,
+           date_of_onset_of_symptoms, time_of_onset_of_symptoms, date_of_referral_decision,
+           time_of_referral_decision, death_notification_number
+    FROM infant_mortality_pba
+    WHERE main_det_id = #{mainDetId}
+</select>
+
+<insert id="insertPBA" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$PBA">
+    INSERT INTO infant_mortality_pba (main_det_id, transreferred, referredfrom, reasons_for_referral,
+                                      pre_referral_management, ambulance, medicines_and_health_on_board,
+                                      medicines_and_health_on_board_specify, date_of_onset_of_symptoms,
+                                      time_of_onset_of_symptoms, date_of_referral_decision,
+                                      time_of_referral_decision, death_notification_number)
+    VALUES (#{mainDetId}, #{Transreferred.value}, #{Referredfrom.value}, #{ReasonsForReferral.value},
+            #{PreReferralManagement.value}, #{Ambulance.value}, #{MedicinesAndHealthOnBoard.value},
+            #{MedicinesAndHealthOnBoardSpecify.value}, str_to_date(#{DateOfOnsetOfSymptoms.value},'%d-%m-%Y'),
+            str_to_date(#{TimeOfOnsetOfSymptoms.value}, '%h:%i %p'), str_to_date(#{DateOfReferralDecision.value},'%d-%m-%Y'), 
+            str_to_date(#{TimeOfReferralDecision.value}, '%h:%i %p'), #{DeathNotificationNumber.value})
+</insert>
+
+<update id="updatePBA" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$PBA">
+    UPDATE infant_mortality_pba
+    SET transreferred = #{Transreferred.value},
+        referredfrom = #{Referredfrom.value},
+        reasons_for_referral = #{ReasonsForReferral.value},
+        pre_referral_management = #{PreReferralManagement.value},
+        ambulance = #{Ambulance.value},
+        medicines_and_health_on_board = #{MedicinesAndHealthOnBoard.value},
+        medicines_and_health_on_board_specify = #{MedicinesAndHealthOnBoardSpecify.value},
+        date_of_onset_of_symptoms = str_to_date(#{DateOfOnsetOfSymptoms.value},'%d-%m-%Y'),
+        time_of_onset_of_symptoms = str_to_date(#{TimeOfOnsetOfSymptoms.value}, '%h:%i %p'),
+        date_of_referral_decision = str_to_date(#{DateOfReferralDecision.value},'%d-%m-%Y'),
+        time_of_referral_decision = str_to_date(#{TimeOfReferralDecision.value}, '%h:%i %p'),
+        death_notification_number = #{DeathNotificationNumber.value}
+    WHERE main_det_id = #{mainDetId}
+</update>
+
+<resultMap id="PBAResultMap" type="com.heartbeat.infantmortality.InfantMortalityXmlModel$PBA">
+    <result property="Transreferred.value" column="transreferred" />
+    <result property="Referredfrom.value" column="referredfrom" />
+    <result property="ReasonsForReferral.value" column="reasons_for_referral" />
+    <result property="PreReferralManagement.value" column="pre_referral_management" />
+    <result property="Ambulance.value" column="ambulance" />
+    <result property="MedicinesAndHealthOnBoard.value" column="medicines_and_health_on_board" />
+    <result property="MedicinesAndHealthOnBoardSpecify.value" column="medicines_and_health_on_board_specify" />
+    <result property="DateOfOnsetOfSymptoms.value" column="date_of_onset_of_symptoms" />
+    <result property="TimeOfOnsetOfSymptoms.value" column="time_of_onset_of_symptoms" />
+    <result property="DateOfReferralDecision.value" column="date_of_referral_decision" />
+    <result property="TimeOfReferralDecision.value" column="time_of_referral_decision" />
+    <result property="DeathNotificationNumber.value" column="death_notification_number" />
+    <result property="id" column="id" />
+</resultMap>
+<!-- PBA - End -->
+
+<!-- ADM - Start -->
+<select id="selectADM" parameterType="int" resultMap="ADMResultMap">
+    select ima.id,coalesce(ima.date_of_admission,ie.admit_date) as date_of_admission,
+	coalesce(ima.time_of_admission,ie.admit_time) as time_of_admission,
+	ima.received_intensive_care,ima.main_reason_complaint_for_admission,
+	ima.n_i_c_u_p_i_c_uadmission from inpatient_entry ie
+	left join infant_mortality_main_det md on md.ip_id= ie.id
+	left join infant_mortality_adm ima on ima.main_det_id = md.id
+	where ie.id=#{ipId}
+</select>
+
+<insert id="insertADM" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$ADM">
+    INSERT INTO infant_mortality_adm (main_det_id, date_of_admission, time_of_admission, 
+                                      main_reason_complaint_for_admission, received_intensive_care, n_i_c_u_p_i_c_uadmission)
+    VALUES (#{mainDetId}, str_to_date(#{DateOfAdmission.value},'%d-%m-%Y'), str_to_date(#{TimeOfAdmission.value}, '%h:%i %p'), 
+            #{MainReasonComplaintForAdmission.value}, #{ReceivedIntensiveCare.value},#{NICUPICUadmission.value})
+</insert>
+
+<update id="updateADM" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$ADM">
+    UPDATE infant_mortality_adm
+    SET date_of_admission = str_to_date(#{DateOfAdmission.value},'%d-%m-%Y'),
+        time_of_admission = str_to_date(#{TimeOfAdmission.value}, '%h:%i %p'),
+        main_reason_complaint_for_admission = #{MainReasonComplaintForAdmission.value},
+        received_intensive_care = #{ReceivedIntensiveCare.value},
+        n_i_c_u_p_i_c_uadmission = #{NICUPICUadmission.value}
+    WHERE main_det_id = #{mainDetId}
+</update>
+
+<resultMap id="ADMResultMap" type="com.heartbeat.infantmortality.InfantMortalityXmlModel$ADM">
+    <result property="DateOfAdmission.value" column="date_of_admission" />
+    <result property="TimeOfAdmission.value" column="time_of_admission" />
+    <result property="MainReasonComplaintForAdmission.value" column="main_reason_complaint_for_admission" />
+    <result property="ReceivedIntensiveCare.value" column="received_intensive_care" />    
+    <result property="NICUPICUadmission.value" column="n_i_c_u_p_i_c_uadmission" />
+    <result property="id" column="id" />
+</resultMap>
+<!-- ADM - End -->
+
+<!-- PEMC - Start -->
+<select id="selectPEMC" parameterType="int" resultMap="PEMCResultMap">
+    SELECT id, hypertension, diabetes, diabetes_other, anemia, mental_disorder, infectious_diseases,
+           other_pre_existing_medical_conditions, other_infectious_diseases, cardiac_disease, hepatitis
+    FROM infant_mortality_pemc
+    WHERE main_det_id = #{mainDetId}
+</select>
+
+<insert id="insertPEMC" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$PEMC">
+    INSERT INTO infant_mortality_pemc (main_det_id, hypertension, diabetes, diabetes_other, anemia, 
+                                      mental_disorder, infectious_diseases, other_pre_existing_medical_conditions, 
+                                      other_infectious_diseases, cardiac_disease, hepatitis)
+    VALUES (#{mainDetId}, #{Hypertension.value}, #{Diabetes.value}, #{DiabetesOther.value}, 
+            #{Anemia.value}, #{MentalDisorder.value}, #{InfectiousDiseases.value}, 
+            #{OtherPreExistingMedicalConditions.value}, #{OtherInfectiousDiseases.value}, 
+            #{CardiacDisease.value}, #{Hepatitis.value})
+</insert>
+
+<update id="updatePEMC" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$PEMC">
+    UPDATE infant_mortality_pemc
+    SET hypertension = #{Hypertension.value},
+        diabetes = #{Diabetes.value},
+        diabetes_other = #{DiabetesOther.value},
+        anemia = #{Anemia.value},
+        mental_disorder = #{MentalDisorder.value},
+        infectious_diseases = #{InfectiousDiseases.value},
+        other_pre_existing_medical_conditions = #{OtherPreExistingMedicalConditions.value},
+        other_infectious_diseases = #{OtherInfectiousDiseases.value},
+        cardiac_disease = #{CardiacDisease.value},
+        hepatitis = #{Hepatitis.value}
+    WHERE main_det_id = #{mainDetId}
+</update>
+
+<resultMap id="PEMCResultMap" type="com.heartbeat.infantmortality.InfantMortalityXmlModel$PEMC">
+    <result property="Hypertension.value" column="hypertension" />
+    <result property="Diabetes.value" column="diabetes" />
+    <result property="DiabetesOther.value" column="diabetes_other" />
+    <result property="Anemia.value" column="anemia" />
+    <result property="MentalDisorder.value" column="mental_disorder" />
+    <result property="InfectiousDiseases.value" column="infectious_diseases" />
+    <result property="OtherPreExistingMedicalConditions.value" column="other_pre_existing_medical_conditions" />
+    <result property="OtherInfectiousDiseases.value" column="other_infectious_diseases" />
+    <result property="CardiacDisease.value" column="cardiac_disease" />
+    <result property="Hepatitis.value" column="hepatitis" />
+    <result property="id" column="id" />
+</resultMap>
+<!-- PEMC - End -->
+
+<!-- ARF - Start -->
+<select id="selectARF" parameterType="int" resultMap="ARFResultMap">
+    SELECT id, hypertension, proteinuria, glycosuria, anemia, urinary_tract_infection, placenta_praevia,
+           placenta_accreta, group_b_streptococcus, other_antenatal_risk_factors
+    FROM infant_mortality_arf
+    WHERE main_det_id = #{mainDetId}
+</select>
+
+<insert id="insertARF" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$ARF">
+    INSERT INTO infant_mortality_arf (main_det_id, hypertension, proteinuria, glycosuria, anemia,
+                                      urinary_tract_infection, placenta_praevia, placenta_accreta, 
+                                      group_b_streptococcus, other_antenatal_risk_factors)
+    VALUES (#{mainDetId}, #{Hypertension.value}, #{Proteinuria.value}, #{Glycosuria.value}, 
+            #{Anemia.value}, #{UrinaryTractInfection.value}, #{PlacentaPraevia.value}, 
+            #{PlacentaAccreta.value}, #{GroupBStreptococcus.value}, #{OtherAntenatalRiskFactors.value})
+</insert>
+
+<update id="updateARF" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$ARF">
+    UPDATE infant_mortality_arf
+    SET hypertension = #{Hypertension.value},
+        proteinuria = #{Proteinuria.value},
+        glycosuria = #{Glycosuria.value},
+        anemia = #{Anemia.value},
+        urinary_tract_infection = #{UrinaryTractInfection.value},
+        placenta_praevia = #{PlacentaPraevia.value},
+        placenta_accreta = #{PlacentaAccreta.value},
+        group_b_streptococcus = #{GroupBStreptococcus.value},
+        other_antenatal_risk_factors = #{OtherAntenatalRiskFactors.value}
+    WHERE main_det_id = #{mainDetId}
+</update>
+
+<resultMap id="ARFResultMap" type="com.heartbeat.infantmortality.InfantMortalityXmlModel$ARF">
+    <result property="Hypertension.value" column="hypertension" />
+    <result property="Proteinuria.value" column="proteinuria" />
+    <result property="Glycosuria.value" column="glycosuria" />
+    <result property="Anemia.value" column="anemia" />
+    <result property="UrinaryTractInfection.value" column="urinary_tract_infection" />
+    <result property="PlacentaPraevia.value" column="placenta_praevia" />
+    <result property="PlacentaAccreta.value" column="placenta_accreta" />
+    <result property="GroupBStreptococcus.value" column="group_b_streptococcus" />
+    <result property="OtherAntenatalRiskFactors.value" column="other_antenatal_risk_factors" />
+    <result property="id" column="id" />
+</resultMap>
+<!-- ARF - End -->
+
+<!-- ARFO - Start -->
+<select id="selectARFO" parameterType="int" resultMap="ARFOResultMap">
+    SELECT id, antenatal_hospitalization, antenatal_hospitalization_other, antenatal_immunization, 
+           antenatal_immunization_other, antenatal_medications, antenatal_medications_list, antenatal_supplement,
+           antenatal_supplement_list
+    FROM infant_mortality_arfo
+    WHERE main_det_id = #{mainDetId}
+</select>
+
+<insert id="insertARFO" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$ARFO">
+    INSERT INTO infant_mortality_arfo (main_det_id, antenatal_hospitalization, antenatal_hospitalization_other, 
+                                       antenatal_immunization, antenatal_immunization_other, antenatal_medications, 
+                                       antenatal_medications_list, antenatal_supplement, antenatal_supplement_list)
+    VALUES (#{mainDetId}, #{AntenatalHospitalization.value}, #{AntenatalHospitalizationOther.value}, 
+            #{AntenatalImmunization.value}, #{AntenatalImmunizationOther.value}, #{AntenatalMedications.value}, 
+            #{AntenatalMedicationsList.value}, #{AntenatalSupplement.value}, #{AntenatalSupplementList.value})
+</insert>
+
+<update id="updateARFO" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$ARFO">
+    UPDATE infant_mortality_arfo
+    SET antenatal_hospitalization = #{AntenatalHospitalization.value},
+        antenatal_hospitalization_other = #{AntenatalHospitalizationOther.value},
+        antenatal_immunization = #{AntenatalImmunization.value},
+        antenatal_immunization_other = #{AntenatalImmunizationOther.value},
+        antenatal_medications = #{AntenatalMedications.value},
+        antenatal_medications_list = #{AntenatalMedicationsList.value},
+        antenatal_supplement = #{AntenatalSupplement.value},
+        antenatal_supplement_list = #{AntenatalSupplementList.value}
+    WHERE main_det_id = #{mainDetId}
+</update>
+
+<resultMap id="ARFOResultMap" type="com.heartbeat.infantmortality.InfantMortalityXmlModel$ARFO">
+    <result property="AntenatalHospitalization.value" column="antenatal_hospitalization" />
+    <result property="AntenatalHospitalizationOther.value" column="antenatal_hospitalization_other" />
+    <result property="AntenatalImmunization.value" column="antenatal_immunization" />
+    <result property="AntenatalImmunizationOther.value" column="antenatal_immunization_other" />
+    <result property="AntenatalMedications.value" column="antenatal_medications" />
+    <result property="AntenatalMedicationsList.value" column="antenatal_medications_list" />
+    <result property="AntenatalSupplement.value" column="antenatal_supplement" />
+    <result property="AntenatalSupplementList.value" column="antenatal_supplement_list" />
+    <result property="id" column="id" />
+</resultMap>
+<!-- ARFO - End -->
+
+<!-- LAB - Start -->
+<select id="selectLAB" parameterType="int" resultMap="LABResultMap">
+    SELECT id, colour_of_aniotic_fluid, amniotic_fluid_smell_offensive, decision_to_delivery_interval, 
+           total_duration_of_rupture_of_membrane, date_mothers_lmp, mothers_lmp, date_of_birth, gestational_age, 
+           method_of_estimation_of_gestational_age, place_of_childbirth, other_place_of_childbirth, attendant_at_childbirth, 
+           onset_of_labour, partogram_used, mode_of_delivery, type_of_anaesthesia_given_to_mother, duration_of_labour, 
+           onset_of_membrane_rupture, time_of_birth, fetal_heart_sounds_on_admission
+    FROM infant_mortality_lab
+    WHERE main_det_id = #{mainDetId}
+</select>
+
+<insert id="insertLAB" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$LAB">
+    INSERT INTO infant_mortality_lab (
+        main_det_id, colour_of_aniotic_fluid, amniotic_fluid_smell_offensive, 
+        decision_to_delivery_interval, total_duration_of_rupture_of_membrane, 
+        date_mothers_lmp, mothers_lmp, date_of_birth, gestational_age, 
+        method_of_estimation_of_gestational_age, place_of_childbirth, other_place_of_childbirth, 
+        attendant_at_childbirth, onset_of_labour, partogram_used, mode_of_delivery, 
+        type_of_anaesthesia_given_to_mother, duration_of_labour, onset_of_membrane_rupture, 
+        time_of_birth, fetal_heart_sounds_on_admission
+    ) VALUES (
+        #{mainDetId}, #{ColourOfAnioticFluid.value}, #{AmnioticFluidSmellOffensive.value}, 
+        #{DecisionToDeliveryInterval.value}, #{TotalDurationOfRuptureOfMembrane.value}, 
+        str_to_date(#{DateMothersLMP.value},'%d-%m-%Y'), 
+        #{MothersLMP.value}, 
+        str_to_date(#{DateOfBirth.value},'%d-%m-%Y'), 
+        #{GestationalAge.value}, 
+        #{MethodOfEstimationOfGestationalAge.value}, #{PlaceOfChildbirth.value}, 
+        #{OtherPlaceOfChildbirth.value}, #{AttendantAtChildbirth.value}, 
+        #{OnsetOfLabour.value}, #{PartogramUsed.value}, #{ModeOfDelivery.value}, 
+        #{TypeOfAnaesthesiaGivenToMother.value}, #{DurationOfLabour.value}, 
+        #{OnsetOfMembraneRupture.value}, 
+        str_to_date(#{TimeOfBirth.value},'%h:%i %p'), 
+        #{FetalHeartSoundsOnAdmission.value}
+    )
+</insert>
+
+<update id="updateLAB" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$LAB">
+    UPDATE infant_mortality_lab
+    SET colour_of_aniotic_fluid = #{ColourOfAnioticFluid.value},
+        amniotic_fluid_smell_offensive = #{AmnioticFluidSmellOffensive.value},
+        decision_to_delivery_interval = #{DecisionToDeliveryInterval.value},
+        total_duration_of_rupture_of_membrane = #{TotalDurationOfRuptureOfMembrane.value},
+        date_mothers_lmp = str_to_date(#{DateMothersLMP.value},'%d-%m-%Y'),
+        mothers_lmp = #{MothersLMP.value},
+        date_of_birth = str_to_date(#{DateOfBirth.value},'%d-%m-%Y'),
+        gestational_age = #{GestationalAge.value},
+        method_of_estimation_of_gestational_age = #{MethodOfEstimationOfGestationalAge.value},
+        place_of_childbirth = #{PlaceOfChildbirth.value},
+        other_place_of_childbirth = #{OtherPlaceOfChildbirth.value},
+        attendant_at_childbirth = #{AttendantAtChildbirth.value},
+        onset_of_labour = #{OnsetOfLabour.value},
+        partogram_used = #{PartogramUsed.value},
+        mode_of_delivery = #{ModeOfDelivery.value},
+        type_of_anaesthesia_given_to_mother = #{TypeOfAnaesthesiaGivenToMother.value},
+        duration_of_labour = #{DurationOfLabour.value},
+        onset_of_membrane_rupture = #{OnsetOfMembraneRupture.value},
+        time_of_birth = str_to_date(#{TimeOfBirth.value},'%h:%i %p'),
+        fetal_heart_sounds_on_admission = #{FetalHeartSoundsOnAdmission.value}
+    WHERE main_det_id = #{mainDetId}
+</update>
+<resultMap id="LABResultMap" type="com.heartbeat.infantmortality.InfantMortalityXmlModel$LAB">
+    <result property="ColourOfAnioticFluid.value" column="colour_of_aniotic_fluid" />
+    <result property="AmnioticFluidSmellOffensive.value" column="amniotic_fluid_smell_offensive" />
+    <result property="DecisionToDeliveryInterval.value" column="decision_to_delivery_interval" />
+    <result property="TotalDurationOfRuptureOfMembrane.value" column="total_duration_of_rupture_of_membrane" />
+    <result property="DateMothersLMP.value" column="date_mothers_lmp" />
+    <result property="MothersLMP.value" column="mothers_lmp" />
+    <result property="DateOfBirth.value" column="date_of_birth" />
+    <result property="GestationalAge.value" column="gestational_age" />
+    <result property="MethodOfEstimationOfGestationalAge.value" column="method_of_estimation_of_gestational_age" />
+    <result property="PlaceOfChildbirth.value" column="place_of_childbirth" />
+    <result property="OtherPlaceOfChildbirth.value" column="other_place_of_childbirth" />
+    <result property="AttendantAtChildbirth.value" column="attendant_at_childbirth" />
+    <result property="OnsetOfLabour.value" column="onset_of_labour" />
+    <result property="PartogramUsed.value" column="partogram_used" />
+    <result property="ModeOfDelivery.value" column="mode_of_delivery" />
+    <result property="TypeOfAnaesthesiaGivenToMother.value" column="type_of_anaesthesia_given_to_mother" />
+    <result property="DurationOfLabour.value" column="duration_of_labour" />
+    <result property="OnsetOfMembraneRupture.value" column="onset_of_membrane_rupture" />
+    <result property="TimeOfBirth.value" column="time_of_birth" />
+    <result property="FetalHeartSoundsOnAdmission.value" column="fetal_heart_sounds_on_admission" />
+    <result property="id" column="id" />
+</resultMap>
+<!-- LAB - End -->
+
+<!-- CLB - Start -->
+<resultMap id="CLBResultMap" type="com.heartbeat.infantmortality.InfantMortalityXmlModel$CLB">
+    <result property="IntrapartumHemorrhage.value" column="intrapartum_hemorrhage"/>
+    <result property="IntrapartumInfection.value" column="intrapartum_infection"/>
+    <result property="CIntrapartumPreEclampsia.value" column="c_intrapartum_pre_eclampsia"/>
+    <result property="CObstructedLabour.value" column="c_obstructed_labour"/>
+    <result property="RupturedUterus.value" column="ruptured_uterus"/>
+    <result property="CCordProlapse.value" column="c_cord_prolapse"/>
+    <result property="CMalPresentation.value" column="c_mal_presentation"/>
+    <result property="Maneuvers.value" column="maneuvers"/>
+    <result property="OtherManeuvers.value" column="other_maneuvers"/>
+    <result property="ShoulderDystocia.value" column="shoulder_dystocia"/>
+    <result property="id" column="id" />
+</resultMap>
+
+<select id="selectCLB" parameterType="int" resultMap="CLBResultMap">
+    SELECT id, intrapartum_hemorrhage, intrapartum_infection, c_intrapartum_pre_eclampsia,
+           c_obstructed_labour, ruptured_uterus, c_cord_prolapse, c_mal_presentation,
+           maneuvers, other_maneuvers, shoulder_dystocia
+    FROM infant_mortality_clb
+    WHERE main_det_id = #{mainDetId}
+</select>
+
+<insert id="insertCLB" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$CLB">
+    INSERT INTO infant_mortality_clb (main_det_id, intrapartum_hemorrhage, intrapartum_infection,
+                                      c_intrapartum_pre_eclampsia, c_obstructed_labour, ruptured_uterus,
+                                      c_cord_prolapse, c_mal_presentation, maneuvers, other_maneuvers,
+                                      shoulder_dystocia)
+    VALUES (#{mainDetId}, #{IntrapartumHemorrhage.value}, #{IntrapartumInfection.value},
+            #{CIntrapartumPreEclampsia.value}, #{CObstructedLabour.value}, #{RupturedUterus.value},
+            #{CCordProlapse.value}, #{CMalPresentation.value}, #{Maneuvers.value}, 
+            #{OtherManeuvers.value}, #{ShoulderDystocia.value})
+</insert>
+
+<update id="updateCLB" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$CLB">
+    UPDATE infant_mortality_clb
+    SET intrapartum_hemorrhage = #{IntrapartumHemorrhage.value},
+        intrapartum_infection = #{IntrapartumInfection.value},
+        c_intrapartum_pre_eclampsia = #{CIntrapartumPreEclampsia.value},
+        c_obstructed_labour = #{CObstructedLabour.value},
+        ruptured_uterus = #{RupturedUterus.value},
+        c_cord_prolapse = #{CCordProlapse.value},
+        c_mal_presentation = #{CMalPresentation.value},
+        maneuvers = #{Maneuvers.value},
+        other_maneuvers = #{OtherManeuvers.value},
+        shoulder_dystocia = #{ShoulderDystocia.value}
+    WHERE main_det_id = #{mainDetId}
+</update>
+<!-- CLB - End -->
+
+<!-- ASD - Start -->
+<resultMap id="ASDResultMap" type="com.heartbeat.infantmortality.InfantMortalityXmlModel$ASD">
+    <result property="ApgarScore1Min.value" column="apgar_score_1_min"/>
+    <result property="ApgarScore5Min.value" column="apgar_score_5_min"/>
+    <result property="ApgarScore10Min.value" column="apgar_score_10_min"/>
+    <result property="id" column="id" />
+</resultMap>
+
+<select id="selectASD" parameterType="int" resultMap="ASDResultMap">
+    SELECT id, apgar_score_1_min, apgar_score_5_min, apgar_score_10_min
+    FROM infant_mortality_asd
+    WHERE main_det_id = #{mainDetId}
+</select>
+
+<insert id="insertASD" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$ASD">
+    INSERT INTO infant_mortality_asd (main_det_id, apgar_score_1_min, apgar_score_5_min, apgar_score_10_min)
+    VALUES (#{mainDetId}, #{ApgarScore1Min.value}, #{ApgarScore5Min.value}, #{ApgarScore10Min.value})
+</insert>
+
+<update id="updateASD" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$ASD">
+    UPDATE infant_mortality_asd
+    SET apgar_score_1_min = #{ApgarScore1Min.value},
+        apgar_score_5_min = #{ApgarScore5Min.value},
+        apgar_score_10_min = #{ApgarScore10Min.value}
+    WHERE main_det_id = #{mainDetId}
+</update>
+<!-- ASD - End -->
+
+<!-- OH - Start -->
+<resultMap id="OHResultMap" type="com.heartbeat.infantmortality.InfantMortalityXmlModel$OH">
+    <result property="Gravidity.value" column="gravidity"/>
+    <result property="Parity.value" column="parity"/>
+    <result property="LiveBirths.value" column="live_births"/>
+    <result property="Stillbirths.value" column="stillbirths"/>
+    <result property="SpontaneousAbortions.value" column="spontaneous_abortions"/>
+    <result property="InducedAbortion.value" column="induced_abortion"/>
+    <result property="id" column="id" />
+</resultMap>
+
+<select id="selectOH" parameterType="int" resultMap="OHResultMap">
+    SELECT id, gravidity, parity, live_births, stillbirths, spontaneous_abortions, induced_abortion
+    FROM infant_mortality_oh
+    WHERE main_det_id = #{mainDetId}
+</select>
+
+<insert id="insertOH" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$OH">
+    INSERT INTO infant_mortality_oh (
+        main_det_id, gravidity, parity, live_births, stillbirths, spontaneous_abortions, induced_abortion
+    ) VALUES (
+        #{mainDetId}, #{Gravidity.value}, #{Parity.value}, #{LiveBirths.value},
+        #{Stillbirths.value}, #{SpontaneousAbortions.value}, #{InducedAbortion.value}
+    )
+</insert>
+
+<update id="updateOH" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$OH">
+    UPDATE infant_mortality_oh
+    SET gravidity = #{Gravidity.value},
+        parity = #{Parity.value},
+        live_births = #{LiveBirths.value},
+        stillbirths = #{Stillbirths.value},
+        spontaneous_abortions = #{SpontaneousAbortions.value},
+        induced_abortion = #{InducedAbortion.value}
+    WHERE main_det_id = #{mainDetId}
+</update>
+<!-- OH - End -->
+
+<!-- OHO - Start -->
+<resultMap id="OHOResultMap" type="com.heartbeat.infantmortality.InfantMortalityXmlModel$OHO">
+    <result property="PreviousCesareanSections.value" column="previous_cesarean_sections"/>
+    <result property="Number.value" column="number"/>
+    <result property="DateOfMostRecentsCS.value" column="date_of_most_recents_cs"/>
+    <result property="PreviousPregnancyComplications.value" column="previous_pregnancy_complications"/>
+    <result property="Description.value" column="description"/>
+    <result property="ContraceptionUseJustPriorToCurrentPregnancy.value" column="contraception_use_just_prior_to_current_pregnancy"/>
+    <result property="TypeOfContraceptionUseJustPriorToCurrentPregnancy.value" column="type_of_contraception_use_just_prior_to_current_pregnancy"/>
+    <result property="AssistedReproductiveTherapy.value" column="assisted_reproductive_therapy"/>
+    <result property="TypeOfAssistedReproductiveTherapy.value" column="type_of_assisted_reproductive_therapy"/>
+    <result property="CongenitalMalformationDetected.value" column="congenital_malformation_detected"/>    
+    <result property="TypeOfAssistedReproductiveTherapyOthers.value" column="type_of_assisted_reproductive_therapy_others"/>
+    <result property="CongenitalGeneticAnomalies.value" column="congenital_genetic_anomalies"/>
+    <result property="CongenitalGeneticAnomaliesOthers.value" column="congenital_genetic_anomalies_others"/>
+    <result property="TypeOfPregnancy.value" column="type_of_pregnancy"/>
+    <result property="SpecifyNumberOfPregnancy.value" column="specify_number_of_pregnancy"/>
+    <result property="BookingVisitAt.value" column="booking_visit_at"/>
+    <result property="AntenatalCareNumberOfVisits.value" column="antenatal_care_number_of_visits"/>
+    <result property="DateOfLastANCVisit.value" column="date_of_last_anc_visit"/>
+    <result property="ANCServicesProvidedAt.value" column="anc_services_provided_at"/>
+    <result property="BookingVisitAtCoded.value" column="booking_visit_at_coded"/>
+    <result property="id" column="id" />
+</resultMap>
+
+<select id="selectOHO" parameterType="int" resultMap="OHOResultMap">
+    SELECT * FROM infant_mortality_oho
+    WHERE main_det_id = #{mainDetId}
+</select>
+
+<insert id="insertOHO" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$OHO">
+    INSERT INTO infant_mortality_oho (
+        main_det_id, previous_cesarean_sections, number, date_of_most_recents_cs,
+        previous_pregnancy_complications, description, contraception_use_just_prior_to_current_pregnancy,
+        type_of_contraception_use_just_prior_to_current_pregnancy, assisted_reproductive_therapy,
+        type_of_assisted_reproductive_therapy, congenital_malformation_detected,
+        type_of_assisted_reproductive_therapy_others, congenital_genetic_anomalies,
+        congenital_genetic_anomalies_others, type_of_pregnancy,
+        specify_number_of_pregnancy, booking_visit_at, antenatal_care_number_of_visits,
+        date_of_last_anc_visit, anc_services_provided_at, booking_visit_at_coded
+    ) VALUES (
+        #{mainDetId}, #{PreviousCesareanSections.value}, #{Number.value}, 
+        str_to_date(#{DateOfMostRecentsCS.value},'%d-%m-%Y'),
+        #{PreviousPregnancyComplications.value}, #{Description.value}, #{ContraceptionUseJustPriorToCurrentPregnancy.value},
+        #{TypeOfContraceptionUseJustPriorToCurrentPregnancy.value}, #{AssistedReproductiveTherapy.value},
+        #{TypeOfAssistedReproductiveTherapy.value}, #{CongenitalMalformationDetected.value},
+        #{TypeOfAssistedReproductiveTherapyOthers.value}, #{CongenitalGeneticAnomalies.value},
+        #{CongenitalGeneticAnomaliesOthers.value}, #{TypeOfPregnancy.value}, 
+        #{SpecifyNumberOfPregnancy.value}, #{BookingVisitAt.value}, #{AntenatalCareNumberOfVisits.value}, 
+        str_to_date(#{DateOfLastANCVisit.value},'%d-%m-%Y'), 
+        #{ANCServicesProvidedAt.value},#{BookingVisitAtCoded.value}
+    )
+</insert>
+
+<update id="updateOHO" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$OHO">
+    UPDATE infant_mortality_oho
+    SET previous_cesarean_sections = #{PreviousCesareanSections.value},
+        number = #{Number.value},
+        date_of_most_recents_cs = str_to_date(#{DateOfMostRecentsCS.value},'%d-%m-%Y'),
+        previous_pregnancy_complications = #{PreviousPregnancyComplications.value},
+        description = #{Description.value},
+        contraception_use_just_prior_to_current_pregnancy = #{ContraceptionUseJustPriorToCurrentPregnancy.value},
+        type_of_contraception_use_just_prior_to_current_pregnancy = #{TypeOfContraceptionUseJustPriorToCurrentPregnancy.value},
+        assisted_reproductive_therapy = #{AssistedReproductiveTherapy.value},
+        type_of_assisted_reproductive_therapy = #{TypeOfAssistedReproductiveTherapy.value},
+        congenital_malformation_detected = #{CongenitalMalformationDetected.value},
+		type_of_assisted_reproductive_therapy_others = #{TypeOfAssistedReproductiveTherapyOthers.value}, 
+		congenital_genetic_anomalies = #{CongenitalGeneticAnomalies.value}, 
+		congenital_genetic_anomalies_others = #{CongenitalGeneticAnomaliesOthers.value}, 
+        type_of_pregnancy = #{TypeOfPregnancy.value},
+        specify_number_of_pregnancy = #{SpecifyNumberOfPregnancy.value},
+        booking_visit_at = #{BookingVisitAt.value},
+        antenatal_care_number_of_visits = #{AntenatalCareNumberOfVisits.value},
+        date_of_last_anc_visit = str_to_date(#{DateOfLastANCVisit.value},'%d-%m-%Y'),
+        anc_services_provided_at = #{ANCServicesProvidedAt.value},
+        booking_visit_at_coded = #{BookingVisitAtCoded.value}
+    WHERE main_det_id = #{mainDetId}
+</update><!-- OHO - End -->
+
+<!-- RESCUDET - Start -->
+<resultMap id="RESCUDETResultMap" type="com.heartbeat.infantmortality.InfantMortalityXmlModel$RESCUDET">
+    <result property="Resuscitation.value" column="resuscitation"/>
+    <result property="ResuscitationSpecify.value" column="resuscitation_specify"/>
+    <result property="OtherResuscitation.value" column="other_resuscitation"/>
+    <result property="DelaydCordclamping.value" column="delayd_cordclamping"/>
+    <result property="TypeOfDeath.value" column="type_of_death"/>
+    <result property="DateOfDeath.value" column="date_of_death"/>
+    <result property="TimeOfDeath.value" column="time_of_death"/>
+    <result property="id" column="id" />
+</resultMap>
+
+<select id="selectRESCUDET" parameterType="int" resultMap="RESCUDETResultMap">
+    SELECT * FROM infant_mortality_rescudet
+    WHERE main_det_id = #{mainDetId}
+</select>
+
+<insert id="insertRESCUDET" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$RESCUDET">
+    INSERT INTO infant_mortality_rescudet (
+        main_det_id, resuscitation, resuscitation_specify, other_resuscitation,
+        delayd_cordclamping, type_of_death, date_of_death, time_of_death
+    ) VALUES (
+        #{mainDetId}, #{Resuscitation.value}, #{ResuscitationSpecify.value}, #{OtherResuscitation.value},
+        #{DelaydCordclamping.value}, #{TypeOfDeath.value}, 
+        str_to_date(#{DateOfDeath.value},'%d-%m-%Y'), 
+        str_to_date(#{TimeOfDeath.value},'%h:%i %p')
+    )
+</insert>
+
+<update id="updateRESCUDET" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$RESCUDET">
+    UPDATE infant_mortality_rescudet
+    SET resuscitation = #{Resuscitation.value},
+        resuscitation_specify = #{ResuscitationSpecify.value},
+        other_resuscitation = #{OtherResuscitation.value},
+        delayd_cordclamping = #{DelaydCordclamping.value},
+        type_of_death = #{TypeOfDeath.value},
+        date_of_death = str_to_date(#{DateOfDeath.value},'%d-%m-%Y'),
+        time_of_death = str_to_date(#{TimeOfDeath.value},'%h:%i %p')
+    WHERE main_det_id = #{mainDetId}
+</update><!-- RESCUDET - End -->
+
+<!-- RESCUDETOTHR - Start -->
+<resultMap id="RESCUDETOTHRResultMap" type="com.heartbeat.infantmortality.InfantMortalityXmlModel$RESCUDETOTHR">
+    <result property="GenderOfBaby.value" column="gender_of_baby"/>
+    <result property="BirthWeight.value" column="birth_weight"/>
+    <result property="Length.value" column="length"/>
+    <result property="HeadCircumference.value" column="head_circumference"/>
+    <result property="CodedBirthWeight.value" column="coded_birth_weight"/>
+    <result property="id" column="id" />
+</resultMap>
+
+<select id="selectRESCUDETOTHR" parameterType="int" resultMap="RESCUDETOTHRResultMap">
+    SELECT * FROM infant_mortality_rescudetothr
+    WHERE main_det_id = #{mainDetId}
+</select>
+
+<insert id="insertRESCUDETOTHR" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$RESCUDETOTHR">
+    INSERT INTO infant_mortality_rescudetothr (
+        main_det_id, gender_of_baby, birth_weight, length,
+        head_circumference, coded_birth_weight
+    ) VALUES (
+        #{mainDetId}, #{GenderOfBaby.value}, #{BirthWeight.value}, #{Length.value},
+        #{HeadCircumference.value}, #{CodedBirthWeight.value}
+    )
+</insert>
+
+<update id="updateRESCUDETOTHR" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$RESCUDETOTHR">
+    UPDATE infant_mortality_rescudetothr
+    SET gender_of_baby = #{GenderOfBaby.value},
+        birth_weight = #{BirthWeight.value},
+        length = #{Length.value},
+        head_circumference = #{HeadCircumference.value},
+        coded_birth_weight = #{CodedBirthWeight.value}
+    WHERE main_det_id = #{mainDetId}
+</update>
+<!-- RESCUDETOTHR - End -->
+
+<!-- POSTHIS - Start -->
+<resultMap id="POSTHISResultMap" type="com.heartbeat.infantmortality.InfantMortalityXmlModel$POSTHIS">
+    <result property="TypeOfCareReceived.value" column="type_of_care_received"/>
+    <result property="TypeOfCareReceivedOthers.value" column="type_of_care_received_others"/>
+    <result property="Problems.value" column="problems"/>
+    <result property="ProblemsOthers.value" column="problems_others"/>
+    <result property="MedicalConditions.value" column="medical_conditions"/>
+    <result property="OtherMedicalConditions.value" column="other_medical_conditions"/>
+    <result property="CongenitalGeneticAnomalies.value" column="congenital_genetic_anomalies"/>
+    <result property="OtherCongenitalGeneticAnomalies.value" column="other_congenital_genetic_anomalies"/>
+    <result property="id" column="id" />
+</resultMap>
+
+<select id="selectPOSTHIS" parameterType="int" resultMap="POSTHISResultMap">
+    SELECT * FROM infant_mortality_posthis
+    WHERE main_det_id = #{mainDetId}
+</select>
+
+<insert id="insertPOSTHIS" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$POSTHIS">
+    INSERT INTO infant_mortality_posthis (
+        main_det_id, type_of_care_received, type_of_care_received_others,
+        problems, problems_others, medical_conditions, other_medical_conditions,
+        congenital_genetic_anomalies, other_congenital_genetic_anomalies
+    ) VALUES (
+        #{mainDetId}, #{TypeOfCareReceived.value}, #{TypeOfCareReceivedOthers.value},
+        #{Problems.value}, #{ProblemsOthers.value},
+        #{MedicalConditions.value}, #{OtherMedicalConditions.value},
+        #{CongenitalGeneticAnomalies.value}, #{OtherCongenitalGeneticAnomalies.value}
+    )
+</insert>
+
+<update id="updatePOSTHIS" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$POSTHIS">
+    UPDATE infant_mortality_posthis
+    SET type_of_care_received = #{TypeOfCareReceived.value},
+    	type_of_care_received_others = #{TypeOfCareReceivedOthers.value},    	
+        problems = #{Problems.value},
+        problems_others = #{ProblemsOthers.value},
+        medical_conditions = #{MedicalConditions.value},
+        other_medical_conditions = #{OtherMedicalConditions.value},
+        congenital_genetic_anomalies = #{CongenitalGeneticAnomalies.value},
+        other_congenital_genetic_anomalies = #{OtherCongenitalGeneticAnomalies.value}
+    WHERE main_det_id = #{mainDetId}
+</update>
+<!-- POSTHIS - End -->
+
+<!-- DETOFDETH - Start -->
+<resultMap id="DETOFDETHResultMap" type="com.heartbeat.infantmortality.InfantMortalityXmlModel$DETOFDETH">
+    <result property="UnderlyingCause.value" column="underlying_cause"/>
+    <result property="id" column="id" />
+</resultMap>
+
+<select id="selectDETOFDETH" parameterType="int" resultMap="DETOFDETHResultMap">
+    SELECT * FROM infant_mortality_detofdeth
+    WHERE main_det_id = #{mainDetId}
+</select>
+
+<insert id="insertDETOFDETH" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$DETOFDETH">
+    INSERT INTO infant_mortality_detofdeth (
+        main_det_id, underlying_cause
+    ) VALUES (
+        #{mainDetId}, #{UnderlyingCause.value}
+    )
+</insert>
+
+<update id="updateDETOFDETH" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$DETOFDETH">
+    UPDATE infant_mortality_detofdeth
+    SET underlying_cause = #{UnderlyingCause.value}
+    WHERE main_det_id = #{mainDetId}
+</update>
+<!-- DETOFDETH - End -->
+
+<!-- CRITDELY - Start -->
+<resultMap id="CRITDELYResultMap" type="com.heartbeat.infantmortality.InfantMortalityXmlModel$CRITDELY">
+    <result property="CriticalDelays.value" column="critical_delays"/>
+    <result property="Delay1InSeekingCare.value" column="delay_1_in_seeking_care"/>
+    <result property="OtherDelay1InSeekingCare.value" column="other_delay_1_in_seeking_care"/>
+    <result property="Delay2InReachingFacility.value" column="delay_2_in_reaching_facility"/>
+    <result property="OtherDelay2InReachingFacility.value" column="other_delay_2_in_reaching_facility"/>
+    <result property="Delay3WithinHealthFacility.value" column="delay_3_within_health_facility"/>
+    <result property="OtherDelay3WithinHealthFacility.value" column="other_delay_3_within_health_facility"/>
+    <result property="id" column="id" />
+</resultMap>
+
+<select id="selectCRITDELY" parameterType="int" resultMap="CRITDELYResultMap">
+    SELECT * FROM infant_mortality_critdely
+    WHERE main_det_id = #{mainDetId}
+</select>
+
+<insert id="insertCRITDELY" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$CRITDELY">
+    INSERT INTO infant_mortality_critdely (
+        main_det_id, critical_delays,
+        delay_1_in_seeking_care, other_delay_1_in_seeking_care,
+        delay_2_in_reaching_facility, other_delay_2_in_reaching_facility,
+        delay_3_within_health_facility, other_delay_3_within_health_facility
+    ) VALUES (
+        #{mainDetId}, #{CriticalDelays.value},
+        #{Delay1InSeekingCare.value}, #{OtherDelay1InSeekingCare.value},
+        #{Delay2InReachingFacility.value}, #{OtherDelay2InReachingFacility.value},
+        #{Delay3WithinHealthFacility.value}, #{OtherDelay3WithinHealthFacility.value}
+    )
+</insert>
+
+<update id="updateCRITDELY" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$CRITDELY">
+    UPDATE infant_mortality_critdely
+    SET critical_delays = #{CriticalDelays.value},
+        delay_1_in_seeking_care = #{Delay1InSeekingCare.value},
+        other_delay_1_in_seeking_care = #{OtherDelay1InSeekingCare.value},
+        delay_2_in_reaching_facility = #{Delay2InReachingFacility.value},
+        other_delay_2_in_reaching_facility = #{OtherDelay2InReachingFacility.value},
+        delay_3_within_health_facility = #{Delay3WithinHealthFacility.value},
+        other_delay_3_within_health_facility = #{OtherDelay3WithinHealthFacility.value}
+    WHERE main_det_id = #{mainDetId}
+</update>
+<!-- CRITDELY - End -->
+
+<!-- MODFACT - Start -->
+<resultMap id="MODFACTResultMap" type="com.heartbeat.infantmortality.InfantMortalityXmlModel$MODFACT">
+    <result property="ModifiableFactors.value" column="modifiable_factors"/>
+    <result property="FamilyRelated.value" column="family_related"/>
+    <result property="OtherFamilyRelated.value" column="other_family_related"/>
+    <result property="AdminstationRelated.value" column="adminstation_related"/>
+    <result property="OtherAdminstationRelated.value" column="other_adminstation_related"/>
+    <result property="ProviderRelated.value" column="provider_related"/>
+    <result property="OtherProviderRelated.value" column="other_provider_related"/>
+    <result property="OtherModifiableFactors.value" column="other_modifiable_factors"/>
+    <result property="id" column="id" />
+</resultMap>
+
+<select id="selectMODFACT" parameterType="int" resultMap="MODFACTResultMap">
+    SELECT * FROM infant_mortality_modfact
+    WHERE main_det_id = #{mainDetId}
+</select>
+
+<insert id="insertMODFACT" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$MODFACT">
+    INSERT INTO infant_mortality_modfact (
+        main_det_id, modifiable_factors,
+        family_related, other_family_related,
+        adminstation_related, other_adminstation_related,
+        provider_related, other_provider_related,
+        other_modifiable_factors
+    ) VALUES (
+        #{mainDetId}, #{ModifiableFactors.value},
+        #{FamilyRelated.value}, #{OtherFamilyRelated.value},
+        #{AdminstationRelated.value}, #{OtherAdminstationRelated.value},
+        #{ProviderRelated.value}, #{OtherProviderRelated.value},
+        #{OtherModifiableFactors.value}
+    )
+</insert>
+
+<update id="updateMODFACT" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$MODFACT">
+    UPDATE infant_mortality_modfact
+    SET modifiable_factors = #{ModifiableFactors.value},
+        family_related = #{FamilyRelated.value},
+        other_family_related = #{OtherFamilyRelated.value},
+        adminstation_related = #{AdminstationRelated.value},
+        other_adminstation_related = #{OtherAdminstationRelated.value},
+        provider_related = #{ProviderRelated.value},
+        other_provider_related = #{OtherProviderRelated.value},
+        other_modifiable_factors = #{OtherModifiableFactors.value}
+    WHERE main_det_id = #{mainDetId}
+</update>
+<!-- MODFACT - End -->
+
+<!-- MODFACTOTHR - Start -->
+<resultMap id="MODFACTOTHRResultMap" type="com.heartbeat.infantmortality.InfantMortalityXmlModel$MODFACTOTHR">
+    <result property="WasTheDeathPreventable.value" column="was_the_death_preventable"/>
+    <result property="ActionToAddressTheCriticalDelaysAndModifiableFactors.value" column="action_to_address_the_critical_delays_and_modifiable_factors"/>
+    <result property="id" column="id" />
+</resultMap>
+
+<select id="selectMODFACTOTHR" parameterType="int" resultMap="MODFACTOTHRResultMap">
+    SELECT * FROM infant_mortality_modfactothr
+    WHERE main_det_id = #{mainDetId}
+</select>
+
+<insert id="insertMODFACTOTHR" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$MODFACTOTHR">
+    INSERT INTO infant_mortality_modfactothr (
+        main_det_id, was_the_death_preventable,
+        action_to_address_the_critical_delays_and_modifiable_factors
+    ) VALUES (
+        #{mainDetId}, #{WasTheDeathPreventable.value},
+        #{ActionToAddressTheCriticalDelaysAndModifiableFactors.value}
+    )
+</insert>
+
+<update id="updateMODFACTOTHR" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$MODFACTOTHR">
+    UPDATE infant_mortality_modfactothr
+    SET was_the_death_preventable = #{WasTheDeathPreventable.value},
+        action_to_address_the_critical_delays_and_modifiable_factors = #{ActionToAddressTheCriticalDelaysAndModifiableFactors.value}
+    WHERE main_det_id = #{mainDetId}
+</update>
+<!-- MODFACTOTHR - End -->
+
+<!-- NAS - Start -->
+<resultMap id="NASResultMap" type="com.heartbeat.infantmortality.InfantMortalityXmlModel$NAS">
+    <result property="FormCompletedBy.value" column="form_completed_by"/>
+    <result property="CompletedDesignation.value" column="completed_designation"/>
+    <result property="FormReviewedBy.value" column="form_reviewed_by"/>
+    <result property="ReviewedDesignation.value" column="reviewed_designation"/>
+    <result property="id" column="id" />
+</resultMap>
+
+<select id="selectNAS" parameterType="int" resultMap="NASResultMap">
+    SELECT * FROM infant_mortality_nas
+    WHERE main_det_id = #{mainDetId}
+</select>
+
+<insert id="insertNAS" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$NAS">
+    INSERT INTO infant_mortality_nas (
+        main_det_id, form_completed_by, completed_designation,
+        form_reviewed_by, reviewed_designation
+    ) VALUES (
+        #{mainDetId}, #{FormCompletedBy.value}, #{CompletedDesignation.value},
+        #{FormReviewedBy.value}, #{ReviewedDesignation.value}
+    )
+</insert>
+
+<update id="updateNAS" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$NAS">
+    UPDATE infant_mortality_nas
+    SET form_completed_by = #{FormCompletedBy.value},
+        completed_designation = #{CompletedDesignation.value},
+        form_reviewed_by = #{FormReviewedBy.value},
+        reviewed_designation = #{ReviewedDesignation.value}
+    WHERE main_det_id = #{mainDetId}
+</update>
+<!-- NAS - End -->
+
+<!-- ACTLEVLFAC - Start -->
+<resultMap id="ACTLEVLFACResultMap" type="com.heartbeat.infantmortality.InfantMortalityXmlModel$ACTLEVLFAC">
+    <result property="ImmediateActionTaken.value" column="immediate_action_taken"/>
+    <result property="ActionRecommendedFromTheMMReviewCommittee.value" column="action_recommended_from_the_mm_review_committee"/>
+    <result property="HospitalMAndMReviewCommitteeChairpersonName.value" column="hospital_m_and_m_review_committee_chairperson_name"/>
+    <result property="Date.value" column="date"/>
+    <result property="Signature.value" column="signature"/>
+    <result property="Email.value" column="email"/>
+    <result property="ContactNumber.value" column="contact_number"/>
+    <result property="id" column="id" />
+</resultMap>
+
+<select id="selectACTLEVLFAC" parameterType="int" resultMap="ACTLEVLFACResultMap">
+    SELECT * FROM infant_mortality_actlevlfac
+    WHERE main_det_id = #{mainDetId}
+</select>
+
+<insert id="insertACTLEVLFAC" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$ACTLEVLFAC">
+    INSERT INTO infant_mortality_actlevlfac (
+        main_det_id, immediate_action_taken, action_recommended_from_the_mm_review_committee,
+        hospital_m_and_m_review_committee_chairperson_name, date, signature, email, contact_number
+    ) VALUES (
+        #{mainDetId}, #{ImmediateActionTaken.value}, #{ActionRecommendedFromTheMMReviewCommittee.value},
+        #{HospitalMAndMReviewCommitteeChairpersonName.value}, 
+        str_to_date(#{Date.value},'%d-%m-%Y'), 
+        #{Signature.value}, #{Email.value}, #{ContactNumber.value}
+    )
+</insert>
+
+<update id="updateACTLEVLFAC" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$ACTLEVLFAC">
+    UPDATE infant_mortality_actlevlfac
+    SET immediate_action_taken = #{ImmediateActionTaken.value},
+        action_recommended_from_the_mm_review_committee = #{ActionRecommendedFromTheMMReviewCommittee.value},
+        hospital_m_and_m_review_committee_chairperson_name = #{HospitalMAndMReviewCommitteeChairpersonName.value},
+        date = str_to_date(#{Date.value},'%d-%m-%Y'),
+        signature = #{Signature.value},
+        email = #{Email.value},
+        contact_number = #{ContactNumber.value}
+    WHERE main_det_id = #{mainDetId}
+</update>
+<!-- ACTLEVLFAC - End -->
+
+<!-- CASSUMM - Start -->
+<resultMap id="CASSUMMResultMap" type="com.heartbeat.infantmortality.InfantMortalityXmlModel$CASSUMM">
+    <result property="AnyAdditionalNotes.value" column="any_additional_notes"/>
+    <result property="id" column="id" />
+</resultMap>
+
+<select id="selectCASSUMM" parameterType="int" resultMap="CASSUMMResultMap">
+    SELECT * FROM infant_mortality_cassumm
+    WHERE main_det_id = #{mainDetId}
+</select>
+
+<insert id="insertCASSUMM" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$CASSUMM">
+    INSERT INTO infant_mortality_cassumm (
+        main_det_id, any_additional_notes
+    ) VALUES (
+        #{mainDetId}, #{AnyAdditionalNotes.value}
+    )
+</insert>
+
+<update id="updateCASSUMM" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$CASSUMM">
+    UPDATE infant_mortality_cassumm
+    SET any_additional_notes = #{AnyAdditionalNotes.value}
+    WHERE main_det_id = #{mainDetId}
+</update>
+<!-- CASSUMM - End -->
+
+<!-- PATDET - Start -->
+<resultMap id="PATDETResultMap" type="com.heartbeat.infantmortality.InfantMortalityXmlModel$PATDET">
+    <result property="MotherMrn.value" column="mother_mrn"/>
+    <result property="MotherEMIDPassID.value" column="mother_emid_pass_id"/>
+    <result property="MotherFname.value" column="mother_fname"/>
+    <result property="MotherLname.value" column="mother_lname"/>
+    <result property="MothersNationality.value" column="mothers_nationality"/>
+    <result property="MotherDOB.value" column="mother_dob"/>
+    <result property="MothersEducation.value" column="mothers_education"/>
+    <result property="MothersOccupation.value" column="mothers_occupation"/>
+    <result property="MothersOccupationSpecify.value" column="mothers_occupation_specify"/>
+    <result property="MaritalStatus.value" column="marital_status"/>
+    <result property="TypeOfMothersInsurance.value" column="type_of_mothers_insurance"/>
+    <result property="TypeOfMothersInsuranceOther.value" column="type_of_mothers_insurance_other"/>
+    <result property="ConsanguineousMarriage.value" column="consanguineous_marriage"/>
+    <result property="FathersEmploymentStatus.value" column="fathers_employment_status"/>
+    <result property="FathersEmploymentEmployedOther.value" column="fathers_employment_employed_other"/>
+    <result property="FathersNationality.value" column="fathers_nationality"/>
+    <result property="FatherSmoker.value" column="father_smoker"/>
+    <result property="MotherSmoker.value" column="mother_smoker"/>
+    <result property="DeceasedBabysFullName.value" column="deceased_babys_full_name"/>
+    <result property="DeceasedBabysDateOfBirth.value" column="deceased_babys_date_of_birth"/>
+    <result property="DeceasedBabysMRN.value" column="deceased_babys_mrn"/>
+    <result property="AttendedAtChildbirthOther.value" column="attended_at_childbirth_other"/>
+    <result property="DeceasedEmiratesIDPassportNumber.value" column="deceased_emirates_id_passport_number"/>
+    <result property="UAEResidencyStatus.value" column="uae_residency_status"/>
+    <result property="BabysPlaceOfBirth.value" column="babys_place_of_birth"/>
+    <result property="Address.value" column="address"/>
+    <result property="id" column="id" />
+</resultMap>
+
+<select id="selectPATDET" parameterType="int" resultMap="PATDETResultMap">
+    SELECT * FROM infant_mortality_patdet
+    WHERE main_det_id = #{mainDetId}
+</select>
+
+<insert id="insertPATDET" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$PATDET">
+    INSERT INTO infant_mortality_patdet (
+        main_det_id, mother_mrn, mother_emid_pass_id, mother_fname, mother_lname, mothers_nationality,
+        mother_dob, mothers_education, mothers_occupation, mothers_occupation_specify, marital_status,
+        type_of_mothers_insurance, type_of_mothers_insurance_other, consanguineous_marriage, fathers_employment_status,
+        fathers_employment_employed_other, fathers_nationality, father_smoker, mother_smoker,
+        deceased_babys_full_name, deceased_babys_date_of_birth, deceased_babys_mrn,
+        deceased_emirates_id_passport_number, attended_at_childbirth_other, 
+        uae_residency_status, babys_place_of_birth, address
+    ) VALUES (
+        #{mainDetId}, #{MotherMrn.value}, #{MotherEMIDPassID.value}, #{MotherFname.value}, #{MotherLname.value},
+        #{MothersNationality.value}, str_to_date(#{MotherDOB.value},'%d-%m-%Y'), #{MothersEducation.value}, #{MothersOccupation.value},
+        #{MothersOccupationSpecify.value}, #{MaritalStatus.value}, #{TypeOfMothersInsurance.value}, #{TypeOfMothersInsuranceOther.value}
+        #{ConsanguineousMarriage.value}, #{FathersEmploymentStatus.value}, #{FathersEmploymentEmployedOther.value},
+        #{FathersNationality.value}, #{FatherSmoker.value}, #{MotherSmoker.value}, #{DeceasedBabysFullName.value},
+        str_to_date(#{DeceasedBabysDateOfBirth.value},'%d-%m-%Y'), #{DeceasedBabysMRN.value}, #{DeceasedEmiratesIDPassportNumber.value},
+        #{AttendedAtChildbirthOther.value}, #{UAEResidencyStatus.value}, #{BabysPlaceOfBirth.value}, #{Address.value}
+    )
+</insert>
+
+<update id="updatePATDET" parameterType="com.heartbeat.infantmortality.InfantMortalityXmlModel$PATDET">
+    UPDATE infant_mortality_patdet
+    SET mother_mrn = #{MotherMrn.value},
+        mother_emid_pass_id = #{MotherEMIDPassID.value},
+        mother_fname = #{MotherFname.value},
+        mother_lname = #{MotherLname.value},
+        mothers_nationality = #{MothersNationality.value},
+        mother_dob = str_to_date(#{MotherDOB.value},'%d-%m-%Y'),
+        mothers_education = #{MothersEducation.value},
+        mothers_occupation = #{MothersOccupation.value},
+        mothers_occupation_specify = #{MothersOccupationSpecify.value},
+        marital_status = #{MaritalStatus.value},
+        type_of_mothers_insurance = #{TypeOfMothersInsurance.value},
+        type_of_mothers_insurance_other = #{TypeOfMothersInsuranceOther.value},
+        consanguineous_marriage = #{ConsanguineousMarriage.value},
+        fathers_employment_status = #{FathersEmploymentStatus.value},
+        fathers_employment_employed_other = #{FathersEmploymentEmployedOther.value},
+        fathers_nationality = #{FathersNationality.value},
+        father_smoker = #{FatherSmoker.value},
+        mother_smoker = #{MotherSmoker.value},
+        deceased_babys_full_name = #{DeceasedBabysFullName.value},
+        deceased_babys_date_of_birth = str_to_date(#{DeceasedBabysDateOfBirth.value},'%d-%m-%Y'),
+        deceased_babys_mrn = #{DeceasedBabysMRN.value},
+        deceased_emirates_id_passport_number = #{DeceasedEmiratesIDPassportNumber.value},
+        attended_at_childbirth_other = #{AttendedAtChildbirthOther.value},
+        uae_residency_status = #{UAEResidencyStatus.value},
+        babys_place_of_birth = #{BabysPlaceOfBirth.value},
+		address = #{Address.value}
+    WHERE main_det_id = #{mainDetId}
+</update>
+<!-- PATDET - End -->
+
+
+<!-- Incident Reporting -->
+<select id="fetchAllIncidetReporting"
+		resultType="com.heartbeat.model.incident.IncidentReporting">
+
+SELECT 
+	emr_incident_event.id as incident_id,
+	emr_incident_event.facility_inc_record_id,
+	emr_incident_event.inc_occurrence_date,
+	emr_incident_event.inc_occurrence_time,
+	emr_incident_event.inc_submitted_date,
+	emr_incident_event.inc_submitted_time,
+	emr_incident_event.inc_updated_date,
+	emr_incident_event.inc_closed_date,
+	emr_incident_event.health_care_facility_name,
+	emr_incident_event.facility_region,
+	emr_incident_event.facility_city,
+	emr_incident_event.facility_group,
+	emr_incident_event.facility_type,
+	emr_incident_event.facility_mfid,
+    emr_incident_taxonomy.affected_code,
+    emr_incident_taxonomy.category_code,
+    emr_incident_taxonomy.sub_category_code,
+    emr_incident_taxonomy.event_detail_code,
+    emr_incident_taxonomy.hcf_level,
+    emr_incident_taxonomy.gender,
+    emr_incident_taxonomy.age,
+    emr_incident_drug.brand_name,
+    emr_incident_drug.generic_name,
+	emr_incident_drug.medication_route,
+	emr_incident_drug.medication_dose,
+    emr_incident_drug.medication_form,
+    emr_incident_drug.medication_inv_generic,
+    emr_incident_drug.reactions,
+    emr_incident_drug.medication_inv_brand,
+    emr_incident_details.inc_record_status, 
+	emr_incident_details.contributing_code,
+	emr_incident_details.sub_contributing_code,
+    emr_incident_details.inc_good_catch,
+    emr_incident_details.inc_sentinel_event,
+   	emr_incident_taxonomy.gender,
+    emr_incident_taxonomy.age
+FROM
+	emr_incident_event 
+    left join emr_incident_taxonomy on emr_incident_taxonomy.incident_event_id=emr_incident_event.id
+    left join emr_incident_drug on emr_incident_drug.incident_event_id=emr_incident_event.id
+    left join emr_incident_details on emr_incident_details.incident_event_id=emr_incident_event.id
+    left join patient_register on emr_incident_event.op_number=patient_register.op_number
+WHERE emr_incident_event.id = #{incident_id} limit 1;
+
+</select>
+
+<update id="updateIncidentApiResponse" parameterType="com.heartbeat.model.incident.IncidentReporting">
+    UPDATE emr_incident_event
+    SET 
+        api_submit = #{api_submit},
+        api_submit_date = NOW(),
+        api_request_file = #{api_request_file},
+        api_response_file = #{api_response_file},
+        api_response_code = #{api_response_code}
+    WHERE id = #{incident_id}
+</update>
+
+
+<insert id="insertIntoInfantMortalityAPI"
+	parameterType="java.util.HashMap">
+	INSERT INTO `infant_mortality_api`
+	(`main_det_id`,
+	`api_status`,
+	`api_send_datetime`,
+	`api_send_by`,
+	`api_response_code`,
+	`request_file_name`,
+	`response_file_name`)
+	VALUES
+	(#{main_det_id},
+	#{api_status},
+	#{api_send_datetime},
+	#{api_send_by},
+	#{api_response_code},
+	#{request_file_name},
+	#{response_file_name});
+
+</insert>
+
+<!-- Infant Mortality Reporting -->
+<select id="fetchAllInfantReporting"
+		resultType="com.heartbeat.infantmortality.InfantMortalityModel">
+
+SELECT 
+	infant_mortality_main_det.domain,
+	infant_mortality_main_det.event_occurrence_date,
+	infant_mortality_main_det.event_occurrence_time,
+	infant_mortality_main_det.event_submitted_date,
+	infant_mortality_main_det.event_submitted_time,
+	infant_mortality_main_det.event_updated_date,
+	infant_mortality_main_det.facility_regions,
+	infant_mortality_main_det.facility_city,
+	infant_mortality_main_det.health_care_facility_name,
+	infant_mortality_main_det.facility_mfid,
+	infant_mortality_main_det.facility_group,
+	infant_mortality_main_det.facility_type,
+	infant_mortality_main_det.hcf_event_id,
+	infant_mortality_main_det.event_closed_date,
+	infant_mortality_main_det.event_record_status,
+	infant_mortality_pba.transreferred,
+	infant_mortality_pba.referredfrom,
+	infant_mortality_pba.reasons_for_referral,
+	infant_mortality_pba.pre_referral_management,
+	infant_mortality_pba.ambulance,
+	infant_mortality_pba.medicines_and_health_on_board,
+	infant_mortality_pba.medicines_and_health_on_board_specify,
+	infant_mortality_pba.date_of_onset_of_symptoms,
+	infant_mortality_pba.time_of_onset_of_symptoms,
+	infant_mortality_pba.date_of_referral_decision,
+	infant_mortality_pba.time_of_referral_decision,
+	infant_mortality_pba.death_notification_number,
+	infant_mortality_adm.date_of_admission,
+	infant_mortality_adm.time_of_admission,
+	infant_mortality_adm.main_reason_complaint_for_admission,
+	infant_mortality_adm.received_intensive_care,
+	infant_mortality_adm.n_i_c_u_p_i_c_uadmission,
+	infant_mortality_pemc.hypertension,
+	infant_mortality_pemc.diabetes,
+	infant_mortality_pemc.diabetes_other,
+	infant_mortality_pemc.anemia,
+	infant_mortality_pemc.mental_disorder,
+	infant_mortality_pemc.infectious_diseases,
+	infant_mortality_pemc.other_pre_existing_medical_conditions,
+	infant_mortality_pemc.other_infectious_diseases,
+	infant_mortality_pemc.cardiac_disease,
+	infant_mortality_pemc.hepatitis,
+	infant_mortality_arf.hypertension,
+	infant_mortality_arf.proteinuria,
+	infant_mortality_arf.glycosuria,
+	infant_mortality_arf.anemia,
+	infant_mortality_arf.urinary_tract_infection,
+	infant_mortality_arf.placenta_praevia,
+	infant_mortality_arf.placenta_accreta,
+	infant_mortality_arf.group_b_streptococcus,
+	infant_mortality_arf.other_antenatal_risk_factors,
+	infant_mortality_arfo.antenatal_hospitalization,
+	infant_mortality_arfo.antenatal_hospitalization_other,
+	infant_mortality_arfo.antenatal_immunization,
+	infant_mortality_arfo.antenatal_immunization_other,
+	infant_mortality_arfo.antenatal_medications,
+	infant_mortality_arfo.antenatal_medications_list,
+	infant_mortality_arfo.antenatal_supplement,
+	infant_mortality_arfo.antenatal_supplement_list,
+	infant_mortality_lab.colour_of_aniotic_fluid,
+	infant_mortality_lab.amniotic_fluid_smell_offensive,
+	infant_mortality_lab.decision_to_delivery_interval,
+	infant_mortality_lab.total_duration_of_rupture_of_membrane,
+	infant_mortality_lab.date_mothers_lmp,
+	infant_mortality_lab.mothers_lmp,
+	infant_mortality_lab.date_of_birth,
+	infant_mortality_lab.gestational_age,
+	infant_mortality_lab.method_of_estimation_of_gestational_age,
+	infant_mortality_lab.place_of_childbirth,
+	infant_mortality_lab.other_place_of_childbirth,
+	infant_mortality_lab.attendant_at_childbirth,
+	infant_mortality_lab.onset_of_labour,
+	infant_mortality_lab.partogram_used,
+	infant_mortality_lab.mode_of_delivery,
+	infant_mortality_lab.type_of_anaesthesia_given_to_mother,
+	infant_mortality_lab.duration_of_labour,
+	infant_mortality_lab.onset_of_membrane_rupture,
+	infant_mortality_lab.time_of_birth,
+	infant_mortality_lab.fetal_heart_sounds_on_admission,
+	infant_mortality_clb.intrapartum_hemorrhage,
+	infant_mortality_clb.intrapartum_infection,
+	infant_mortality_clb.c_intrapartum_pre_eclampsia,
+	infant_mortality_clb.c_obstructed_labour,
+	infant_mortality_clb.ruptured_uterus,
+	infant_mortality_clb.c_cord_prolapse,
+	infant_mortality_clb.c_mal_presentation,
+	infant_mortality_clb.maneuvers,
+	infant_mortality_clb.other_maneuvers,
+	infant_mortality_clb.shoulder_dystocia,
+	infant_mortality_asd.apgar_score_1_min,
+	infant_mortality_asd.apgar_score_5_min,
+	infant_mortality_asd.apgar_score_10_min,
+	infant_mortality_oh.gravidity,
+	infant_mortality_oh.parity,
+	infant_mortality_oh.live_births,
+	infant_mortality_oh.stillbirths,
+	infant_mortality_oh.spontaneous_abortions,
+	infant_mortality_oh.induced_abortion,
+	infant_mortality_oho.previous_cesarean_sections,
+	infant_mortality_oho.number,
+	infant_mortality_oho.date_of_most_recents_cs,
+	infant_mortality_oho.previous_pregnancy_complications,
+	infant_mortality_oho.description,
+	infant_mortality_oho.contraception_use_just_prior_to_current_pregnancy,
+	infant_mortality_oho.type_of_contraception_use_just_prior_to_current_pregnancy,
+	infant_mortality_oho.assisted_reproductive_therapy,
+	infant_mortality_oho.type_of_assisted_reproductive_therapy,
+	infant_mortality_oho.congenital_malformation_detected,
+	infant_mortality_oho.type_of_assisted_reproductive_therapy_others,
+	infant_mortality_oho.congenital_genetic_anomalies,
+	infant_mortality_oho.congenital_genetic_anomalies_others,
+	infant_mortality_oho.type_of_pregnancy,
+	infant_mortality_oho.specify_number_of_pregnancy,
+	infant_mortality_oho.booking_visit_at,
+	infant_mortality_oho.antenatal_care_number_of_visits,
+	infant_mortality_oho.date_of_last_anc_visit,
+	infant_mortality_oho.anc_services_provided_at,
+	infant_mortality_oho.booking_visit_at_coded,
+	infant_mortality_rescudet.resuscitation,
+	infant_mortality_rescudet.resuscitation_specify,
+	infant_mortality_rescudet.other_resuscitation,
+	infant_mortality_rescudet.delayd_cordclamping,
+	infant_mortality_rescudet.type_of_death,
+	infant_mortality_rescudet.date_of_death,
+	infant_mortality_rescudet.time_of_death,
+	infant_mortality_rescudetothr.gender_of_baby,
+	infant_mortality_rescudetothr.birth_weight,
+	infant_mortality_rescudetothr.length,
+	infant_mortality_rescudetothr.head_circumference,
+	infant_mortality_rescudetothr.coded_birth_weight,
+	infant_mortality_posthis.type_of_care_received,
+	infant_mortality_posthis.type_of_care_received_others,
+	infant_mortality_posthis.problems,
+	infant_mortality_posthis.problems_others,
+	infant_mortality_posthis.medical_conditions,
+	infant_mortality_posthis.other_medical_conditions,
+	infant_mortality_posthis.congenital_genetic_anomalies,
+	infant_mortality_posthis.other_congenital_genetic_anomalies,
+	infant_mortality_detofdeth.underlying_cause,
+	infant_mortality_critdely.critical_delays,
+	infant_mortality_critdely.delay_1_in_seeking_care,
+	infant_mortality_critdely.other_delay_1_in_seeking_care,
+	infant_mortality_critdely.delay_2_in_reaching_facility,
+	infant_mortality_critdely.other_delay_2_in_reaching_facility,
+	infant_mortality_critdely.delay_3_within_health_facility,
+	infant_mortality_critdely.other_delay_3_within_health_facility,
+	infant_mortality_modfact.modifiable_factors,
+	infant_mortality_modfact.family_related,
+	infant_mortality_modfact.other_family_related,
+	infant_mortality_modfact.adminstation_related,
+	infant_mortality_modfact.other_adminstation_related,
+	infant_mortality_modfact.provider_related,
+	infant_mortality_modfact.other_provider_related,
+	infant_mortality_modfact.other_modifiable_factors,
+	infant_mortality_modfactothr.was_the_death_preventable,
+	infant_mortality_modfactothr.action_to_address_the_critical_delays_and_modifiable_factors,
+	infant_mortality_nas.form_completed_by,
+	infant_mortality_nas.completed_designation,
+	infant_mortality_nas.form_reviewed_by,
+	infant_mortality_nas.reviewed_designation,
+	infant_mortality_actlevlfac.immediate_action_taken,
+	infant_mortality_actlevlfac.action_recommended_from_the_mm_review_committee,
+	infant_mortality_actlevlfac.hospital_m_and_m_review_committee_chairperson_name,
+	infant_mortality_actlevlfac.date,
+	infant_mortality_actlevlfac.signature,
+	infant_mortality_actlevlfac.email,
+	infant_mortality_actlevlfac.contact_number,
+	infant_mortality_cassumm.any_additional_notes,
+	infant_mortality_patdet.mother_mrn,
+	infant_mortality_patdet.mother_emid_pass_id,
+	infant_mortality_patdet.mother_fname,
+	infant_mortality_patdet.mother_lname,
+	infant_mortality_patdet.mothers_nationality,
+	infant_mortality_patdet.mother_dob,
+	infant_mortality_patdet.mothers_education,
+	infant_mortality_patdet.mothers_occupation,
+	infant_mortality_patdet.mothers_occupation_specify,
+	infant_mortality_patdet.marital_status,
+	infant_mortality_patdet.type_of_mothers_insurance,
+	infant_mortality_patdet.type_of_mothers_insurance_other,
+	infant_mortality_patdet.consanguineous_marriage,
+	infant_mortality_patdet.fathers_employment_status,
+	infant_mortality_patdet.fathers_employment_employed_other,
+	infant_mortality_patdet.fathers_nationality,
+	infant_mortality_patdet.father_smoker,
+	infant_mortality_patdet.mother_smoker,
+	infant_mortality_patdet.deceased_babys_full_name,
+	infant_mortality_patdet.deceased_babys_date_of_birth,
+	infant_mortality_patdet.deceased_babys_mrn,
+	infant_mortality_patdet.deceased_emirates_id_passport_number,
+	infant_mortality_patdet.attended_at_childbirth_other,
+	infant_mortality_patdet.uae_residency_status,
+	infant_mortality_patdet.babys_place_of_birth,
+	infant_mortality_patdet.address
+    
+FROM
+	infant_mortality_main_det
+	left join infant_mortality_pba on infant_mortality_main_det.id = infant_mortality_pba.main_det_id
+	left join infant_mortality_adm on infant_mortality_main_det.id = infant_mortality_adm.main_det_id
+	left join infant_mortality_pemc on infant_mortality_main_det.id = infant_mortality_pemc.main_det_id
+    left join infant_mortality_arf on infant_mortality_main_det.id = infant_mortality_arf.main_det_id
+    left join infant_mortality_arfo on infant_mortality_main_det.id = infant_mortality_arfo.main_det_id
+	left join infant_mortality_lab on infant_mortality_main_det.id = infant_mortality_lab.main_det_id
+    left join infant_mortality_clb on infant_mortality_main_det.id = infant_mortality_clb.main_det_id
+    left join infant_mortality_asd on infant_mortality_main_det.id = infant_mortality_asd.main_det_id
+    left join infant_mortality_oh on infant_mortality_main_det.id = infant_mortality_oh.main_det_id
+    left join infant_mortality_oho on infant_mortality_main_det.id = infant_mortality_oho.main_det_id 
+	left join infant_mortality_rescudet on infant_mortality_main_det.id = infant_mortality_rescudet.main_det_id
+    left join infant_mortality_rescudetothr on infant_mortality_main_det.id = infant_mortality_rescudetothr.main_det_id
+    left join infant_mortality_posthis on infant_mortality_main_det.id = infant_mortality_posthis.main_det_id
+    left join infant_mortality_detofdeth on infant_mortality_main_det.id = infant_mortality_detofdeth.main_det_id
+    left join infant_mortality_critdely on infant_mortality_main_det.id = infant_mortality_critdely.main_det_id
+    left join infant_mortality_modfact on infant_mortality_main_det.id = infant_mortality_modfact.main_det_id
+    left join infant_mortality_modfactothr on infant_mortality_main_det.id = infant_mortality_modfactothr.main_det_id
+    left join infant_mortality_nas on infant_mortality_main_det.id = infant_mortality_nas.main_det_id
+	left join infant_mortality_actlevlfac on infant_mortality_main_det.id = infant_mortality_actlevlfac.main_det_id
+    left join infant_mortality_cassumm on infant_mortality_main_det.id = infant_mortality_cassumm.main_det_id
+    left join infant_mortality_patdet on infant_mortality_main_det.id = infant_mortality_patdet.main_det_id
+WHERE infant_mortality_main_det.ip_id = #{id} limit 1;
+
+</select>
+
+</mapper>
